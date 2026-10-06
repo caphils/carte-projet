@@ -1,0 +1,5 @@
+build/
+sortie/
+*.wav
+*.ogg
+*.mp3

@@ -1,7 +1,7 @@
 {
   "name": "carte-projet",
   "description": "Carte reliée d'un projet de code (Python, Django, gabarits, JS, CSS) : emplacement, route, rôle et interactions de chaque élément, avec une page HTML interactive et un serveur local de recherche et d'édition.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": { "name": "Jean Claude Nguetta" },
   "repository": "https://github.com/caphils/carte-projet",
   "license": "MIT",
