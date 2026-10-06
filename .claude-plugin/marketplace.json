@@ -1,0 +1,11 @@
+{
+  "name": "carte-projet",
+  "owner": { "name": "Jean Claude Nguetta" },
+  "plugins": [
+    {
+      "name": "carte-projet",
+      "source": "./",
+      "description": "Carte reliée d'un projet de code avec page HTML interactive (Python, Django, gabarits, JS, CSS)."
+    }
+  ]
+}

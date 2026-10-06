@@ -1,0 +1,803 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Carte du projet</title>
+<style>
+:root {
+  --fond: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --bord: #dde1e7; --texte: #1d2430; --texte-2: #5b6575;
+  --accent: #1f6feb; --accent-doux: #e7f0fe; --marque: #fff1b8;
+  --t-bleu: #1f6feb; --t-violet: #7c4dce; --t-sarcelle: #0f8a83; --t-indigo: #44539b; --t-ambre: #b7770a;
+  --t-vert: #2f8a3e; --t-orange: #c4581c; --t-gris: #7b8494; --t-rose: #c23c6e;
+  --ombre: 0 1px 2px rgba(20,30,50,.06), 0 2px 8px rgba(20,30,50,.05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #12161c; --surface: #1a1f27; --surface-2: #222833; --bord: #2f3744; --texte: #e3e8ef; --texte-2: #9aa5b5;
+    --accent: #5b9dff; --accent-doux: #1d2c44; --marque: #5a4a12;
+    --t-bleu: #5b9dff; --t-violet: #a982f0; --t-sarcelle: #35b8ae; --t-indigo: #8d9be0; --t-ambre: #e0a43a;
+    --t-vert: #5cbf6c; --t-orange: #ee8650; --t-gris: #8e98a8; --t-rose: #ec6f9c;
+    --ombre: 0 1px 2px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"] {
+  --fond: #12161c; --surface: #1a1f27; --surface-2: #222833; --bord: #2f3744; --texte: #e3e8ef; --texte-2: #9aa5b5;
+  --accent: #5b9dff; --accent-doux: #1d2c44; --marque: #5a4a12;
+  --t-bleu: #5b9dff; --t-violet: #a982f0; --t-sarcelle: #35b8ae; --t-indigo: #8d9be0; --t-ambre: #e0a43a;
+  --t-vert: #5cbf6c; --t-orange: #ee8650; --t-gris: #8e98a8; --t-rose: #ec6f9c;
+  --ombre: 0 1px 2px rgba(0,0,0,.3);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--fond); color: var(--texte); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+mark { background: var(--marque); color: inherit; border-radius: 2px; padding: 0 1px; }
+button { font: inherit; color: inherit; }
+
+.entete { display: flex; align-items: center; gap: 16px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--bord); position: sticky; top: 0; z-index: 5; }
+.entete h1 { margin: 0; font-size: 16px; white-space: nowrap; cursor: pointer; }
+.entete h1 span { color: var(--texte-2); font-weight: 400; }
+.recherche { flex: 1; max-width: 720px; position: relative; }
+.recherche input { width: 100%; padding: 9px 12px 9px 34px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface-2); color: var(--texte); font-size: 15px; }
+.recherche input:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface); }
+.recherche svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--texte-2); }
+.recherche kbd { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); }
+kbd { font: 11px ui-monospace, monospace; border: 1px solid var(--bord); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--texte-2); background: var(--surface); }
+.meta { color: var(--texte-2); font-size: 12px; white-space: nowrap; }
+.theme { border: 1px solid var(--bord); background: var(--surface); border-radius: 6px; padding: 4px 8px; cursor: pointer; }
+
+.page { display: grid; grid-template-columns: 340px 1fr; height: calc(100vh - 57px); }
+.cote { border-right: 1px solid var(--bord); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+.onglets { display: flex; border-bottom: 1px solid var(--bord); }
+.onglets button { flex: 1; border: 0; background: none; padding: 9px 6px; cursor: pointer; color: var(--texte-2); border-bottom: 2px solid transparent; }
+.onglets button[aria-selected="true"] { color: var(--texte); border-bottom-color: var(--accent); font-weight: 600; }
+.panneau { overflow: auto; flex: 1; padding: 6px 0; }
+.filtre { margin: 6px 10px; width: calc(100% - 20px); padding: 6px 9px; border: 1px solid var(--bord); border-radius: 6px; background: var(--surface-2); color: var(--texte); }
+
+.arbre, .arbre ul { list-style: none; margin: 0; padding: 0; }
+.arbre li > .ligne { display: flex; align-items: center; gap: 5px; padding: 2px 8px 2px calc(8px + var(--n, 0) * 14px); cursor: pointer; white-space: nowrap; }
+.arbre li > .ligne:hover { background: var(--surface-2); }
+.arbre li > .ligne.choisi { background: var(--accent-doux); }
+.fleche { width: 14px; height: 14px; display: inline-flex; align-items: center; justify-content: center; color: var(--texte-2); flex: none; border: 0; background: none; padding: 0; cursor: pointer; }
+.fleche svg { transition: transform .12s; }
+.ouvert > .ligne .fleche svg { transform: rotate(90deg); }
+.arbre .nom { overflow: hidden; text-overflow: ellipsis; }
+.arbre .compte { color: var(--texte-2); font-size: 11px; margin-left: auto; }
+
+.pastille { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--c, var(--t-gris)); }
+.badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; letter-spacing: .02em; padding: 1px 7px; border-radius: 10px; color: var(--c); background: color-mix(in srgb, var(--c) 13%, transparent); white-space: nowrap; }
+
+.contenu { overflow: auto; padding: 20px 28px 60px; min-width: 0; }
+.fil { color: var(--texte-2); font-size: 12.5px; margin-bottom: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+.fil a { color: var(--texte-2); }
+h2 { margin: 2px 0 6px; font-size: 22px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; word-break: break-word; }
+h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--texte-2); margin: 26px 0 8px; }
+.carte { background: var(--surface); border: 1px solid var(--bord); border-radius: 10px; padding: 14px 16px; box-shadow: var(--ombre); }
+.emplacement { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; color: var(--texte-2); }
+.role { font-size: 15px; margin: 12px 0 4px; max-width: 900px; }
+.role.vide { color: var(--texte-2); font-style: italic; }
+.source { font-size: 11.5px; color: var(--texte-2); }
+.doc { white-space: pre-wrap; font-size: 13px; color: var(--texte-2); max-height: 360px; overflow: auto; margin: 0; }
+.routes-vue { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.routes-vue a { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(--surface-2); padding: 2px 8px; border-radius: 5px; }
+
+.groupes { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.groupe h4 { margin: 0 0 6px; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.groupe h4 .n { color: var(--texte-2); font-weight: 400; }
+.groupe ul { list-style: none; margin: 0; padding: 0; max-height: 260px; overflow: auto; }
+.groupe li { padding: 3px 0; border-top: 1px solid var(--bord); display: flex; gap: 8px; align-items: baseline; min-width: 0; }
+.groupe li:first-child { border-top: 0; }
+.groupe li a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.groupe li .ou { color: var(--texte-2); font-size: 11.5px; margin-left: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 45%; }
+.trait { width: 14px; height: 3px; border-radius: 2px; background: var(--c); display: inline-block; }
+.bascule { font-size: 12.5px; color: var(--texte-2); display: inline-flex; gap: 6px; align-items: center; margin-left: 10px; text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.graphe { width: 100%; overflow-x: auto; }
+.graphe svg { display: block; }
+.graphe .boite rect { fill: var(--surface); stroke: var(--bord); }
+.graphe .boite:hover rect { stroke: var(--accent); }
+.graphe .boite { cursor: pointer; }
+.graphe .boite text { fill: var(--texte); font-size: 12px; }
+.graphe .boite .type { fill: var(--texte-2); font-size: 10px; }
+.graphe .centre rect { fill: var(--accent-doux); stroke: var(--accent); stroke-width: 1.5; }
+.graphe .centre text { font-weight: 600; }
+.graphe path { fill: none; stroke-width: 1.6; opacity: .75; }
+.graphe .plus { fill: var(--texte-2); font-size: 11.5px; }
+.legende { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--texte-2); margin: 4px 0 8px; }
+.legende span { display: inline-flex; align-items: center; gap: 5px; }
+
+.resultats { list-style: none; margin: 0; padding: 0; }
+.resultats li { padding: 10px 12px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface); margin-bottom: 8px; cursor: pointer; }
+.resultats li:hover, .resultats li.actif { border-color: var(--accent); }
+.resultats .titre { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.resultats .chemin { color: var(--texte-2); font-size: 12.5px; }
+.resultats .extrait { color: var(--texte-2); margin-top: 3px; font-size: 13px; }
+.resultats .liens-courts { margin-top: 4px; font-size: 12px; color: var(--texte-2); }
+
+.tuiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.tuile { background: var(--surface); border: 1px solid var(--bord); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.tuile:hover { border-color: var(--accent); }
+.tuile b { font-size: 22px; display: block; font-variant-numeric: tabular-nums; }
+.dossiers { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.dossiers .tuile p { margin: 4px 0 0; color: var(--texte-2); font-size: 13px; }
+.paquets svg { display: block; width: 100%; max-width: 760px; height: auto; margin: 0 auto; }
+.paquets text { fill: var(--texte); font-size: 12px; }
+.paquets circle { fill: var(--accent-doux); stroke: var(--accent); cursor: pointer; }
+.paquets line { stroke: var(--texte-2); }
+.aide { color: var(--texte-2); }
+.liste-routes li .ligne { padding-left: 12px; }
+.liste-routes .r { font-family: ui-monospace, monospace; font-size: 12px; }
+.liste-routes .v { color: var(--texte-2); font-size: 11.5px; }
+.liste-routes li > .ligne { white-space: normal; display: block; }
+
+.note { border: 1px solid var(--bord); border-left: 3px solid var(--accent); background: var(--surface); padding: 8px 12px; border-radius: 6px; color: var(--texte-2); font-size: 13px; }
+.note.erreur { border-left-color: var(--t-rose); color: var(--texte); }
+.note.ok { border-left-color: var(--t-vert); color: var(--texte); }
+.bouton { border: 1px solid var(--bord); background: var(--surface); border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px; }
+.bouton:hover { border-color: var(--accent); }
+.bouton.principal { background: var(--accent); border-color: var(--accent); color: #fff; }
+.bouton:disabled { opacity: .5; cursor: default; }
+.code-barre { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 12px; border-bottom: 1px solid var(--bord); background: var(--surface-2); border-radius: 10px 10px 0 0; font-size: 12.5px; color: var(--texte-2); }
+.code-barre .espace { flex: 1; }
+.bloc-code { border: 1px solid var(--bord); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.code { font: 12.5px/20px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow: auto; max-height: 70vh; }
+.code .l { display: flex; white-space: pre; min-width: max-content; }
+.code .l:hover { background: var(--surface-2); }
+.code .n { position: sticky; left: 0; flex: none; width: 56px; padding-right: 10px; text-align: right; color: var(--texte-2); background: var(--surface); user-select: none; cursor: pointer; border-right: 1px solid var(--bord); }
+.code .t { padding-left: 12px; padding-right: 16px; }
+.code .l.cible, .code .l.cible .n { background: var(--marque); }
+.code .l.zone .n { color: var(--accent); }
+.editeur { display: flex; height: 70vh; font: 12.5px/20px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.editeur .gouttiere { flex: none; width: 56px; padding: 8px 10px 8px 0; margin: 0; text-align: right; color: var(--texte-2); overflow: hidden; border-right: 1px solid var(--bord); background: var(--surface-2); font: inherit; white-space: pre; }
+.editeur textarea { flex: 1; border: 0; resize: none; padding: 8px 12px; background: var(--surface); color: var(--texte); font: inherit; white-space: pre; overflow: auto; outline: none; tab-size: 4; }
+.etat-edition { font-size: 12px; color: var(--texte-2); padding: 6px 12px; border-top: 1px solid var(--bord); display: flex; gap: 12px; }
+.lignes-code { list-style: none; margin: 0; padding: 0; }
+.lignes-code .fichier { margin-top: 10px; font-weight: 600; font-size: 13px; display: flex; gap: 8px; align-items: center; }
+.lignes-code .fichier .aide { font-weight: 400; }
+.lignes-code li.ligne-code { display: flex; gap: 10px; padding: 3px 8px; border-radius: 5px; cursor: pointer; font: 12.5px/1.6 ui-monospace, Menlo, monospace; align-items: baseline; }
+.lignes-code li.ligne-code:hover, .lignes-code li.ligne-code.actif { background: var(--accent-doux); }
+.lignes-code .num { color: var(--texte-2); width: 44px; text-align: right; flex: none; }
+.lignes-code .txt { white-space: pre; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
+.lignes-code .dans { color: var(--texte-2); font-family: -apple-system, sans-serif; font-size: 11.5px; white-space: nowrap; }
+.options-code { display: inline-flex; gap: 12px; font-size: 12.5px; color: var(--texte-2); margin-left: 8px; }
+.options-code label { display: inline-flex; gap: 4px; align-items: center; text-transform: none; letter-spacing: 0; font-weight: 400; }
+
+.plan-outils { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.plan-outils .rels { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 12px; color: var(--texte-2); }
+.plan-outils .rels label { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+.plan { position: relative; border: 1px solid var(--bord); border-radius: 10px; background: var(--surface); overflow-x: auto; }
+.plan-interieur { position: relative; min-width: 720px; }
+.pl-ligne { height: 26px; display: flex; align-items: center; cursor: pointer; white-space: nowrap; position: relative; }
+.pl-etiquette { display: flex; align-items: center; gap: 5px; width: calc(var(--larg) - 70px); overflow: hidden; padding-left: calc(8px + var(--n) * 16px); flex: none; }
+.pl-ligne:hover { background: var(--surface-2); }
+.pl-ligne.choisi { background: var(--accent-doux); }
+.pl-ligne .nom { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 40px; }
+.pl-ligne .role-court { color: var(--texte-2); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; min-width: 0; flex: 1 1 0; }
+.pl-ligne .fiche { opacity: 0; font-size: 12px; padding: 0 4px; }
+.pl-ligne:hover .fiche { opacity: 1; }
+.pl-ligne .nb { font-size: 11px; color: var(--texte-2); font-variant-numeric: tabular-nums; width: 40px; text-align: right; flex: none; }
+.plan.selection .pl-ligne:not(.relie):not(.choisi) { opacity: .45; }
+.pl-ligne.relie .nom { font-weight: 600; }
+.plan svg.arcs { position: absolute; top: 0; pointer-events: none; overflow: visible; }
+.plan svg.arcs path { fill: none; pointer-events: stroke; }
+.plan svg.arcs text { font-size: 10.5px; fill: var(--texte-2); }
+.plan-detail { margin-top: 10px; }
+
+@media (max-width: 820px) {
+  .entete { flex-wrap: wrap; padding: 10px 16px; }
+  .meta { display: none; }
+  .page { grid-template-columns: 1fr; height: auto; }
+  .cote { max-height: 45vh; border-right: 0; border-bottom: 1px solid var(--bord); }
+  .contenu { padding: 16px; }
+}
+</style>
+</head>
+<body>
+<header class="entete">
+  <h1 id="titre" title="Vue d'ensemble">Carte <span id="nom-projet"></span></h1>
+  <div class="recherche">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="Chercher un élément, une route, un rôle… (ex. « bordereau », « /envois/ », « taux »)" autocomplete="off" spellcheck="false">
+    <kbd>/</kbd>
+  </div>
+  <span class="meta" id="meta"></span>
+  <button class="theme" id="theme" title="Thème clair ou sombre">◐</button>
+</header>
+<div class="page">
+  <aside class="cote">
+    <div class="onglets" role="tablist">
+      <button role="tab" data-onglet="arbre" aria-selected="true">Arborescence</button>
+      <button role="tab" data-onglet="routes" aria-selected="false">Routes</button>
+      <button role="tab" data-onglet="types" aria-selected="false">Types</button>
+    </div>
+    <div class="panneau" id="panneau"></div>
+  </aside>
+  <main class="contenu" id="contenu"></main>
+</div>
+<script id="donnees" type="application/json">/*__DONNEES__*/null</script>
+<script id="serveur" type="application/json">/*__SERVEUR__*/null</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("donnees").textContent);
+
+const TYPES = {
+  dossier: ["Dossier", "gris"], module: ["Module Python", "indigo"], gabarit: ["Gabarit", "sarcelle"],
+  script: ["Script", "orange"], style: ["Style", "orange"], document: ["Document", "gris"], config: ["Configuration", "gris"],
+  ressource: ["Ressource", "gris"], migration: ["Migration", "gris"], classe: ["Classe", "indigo"], modele: ["Modèle", "violet"],
+  vue: ["Vue", "bleu"], route: ["Route", "bleu"], formulaire: ["Formulaire", "ambre"], admin: ["Admin", "ambre"],
+  test: ["Test", "vert"], commande: ["Commande", "rose"], fonction: ["Fonction", "indigo"], methode: ["Méthode", "indigo"],
+};
+const RELATIONS = {
+  sert: ["affiche la vue", "servie par la route", "bleu"], rend: ["affiche le gabarit", "affiché par", "sarcelle"],
+  lien_url: ["mène à la route", "lien depuis", "bleu"], appelle: ["appelle", "appelé par", "indigo"],
+  utilise: ["utilise", "utilisé par", "gris"], relation: ["relation vers", "référencé par", "violet"],
+  herite: ["hérite de", "parent de", "violet"], importe: ["importe", "importé par", "gris"],
+  inclut: ["inclut", "inclus dans", "sarcelle"], etend: ["étend", "étendu par", "sarcelle"],
+  charge: ["charge", "chargé par", "orange"], teste: ["teste", "testé par", "vert"],
+};
+const ORDRE_REL = Object.keys(RELATIONS);
+const SOURCES = { doc: "docstring", commentaire: "commentaire d'en-tête", ecrit: "rôle écrit (roles.json)",
+  claude_md: "tableau de CLAUDE.md", deduit: "déduit du type", vue: "rôle de la vue" };
+const ICONE_FLECHE = '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1.5 7 5l-4 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
+
+// ------------------------------------------------------------------ index
+const parId = new Map(), enfants = new Map(), sortants = new Map(), entrants = new Map();
+for (const n of D.noeuds) { parId.set(n.id, n); }
+for (const n of D.noeuds) {
+  if (n.parent == null) continue;
+  if (!enfants.has(n.parent)) enfants.set(n.parent, []);
+  enfants.get(n.parent).push(n.id);
+}
+const rangType = t => (t === "dossier" ? 0 : TYPES[t] && ["module", "gabarit", "script", "style", "document", "config", "ressource", "migration"].includes(t) ? 1 : 2);
+for (const [p, liste] of enfants) {
+  liste.sort((a, b) => {
+    const A = parId.get(a), B = parId.get(b);
+    return rangType(A.type) - rangType(B.type) || (A.ligne || 0) - (B.ligne || 0) || A.nom.localeCompare(B.nom);
+  });
+}
+for (const [s, c, t] of D.liens) {
+  if (!sortants.has(s)) sortants.set(s, []);
+  if (!entrants.has(c)) entrants.set(c, []);
+  sortants.get(s).push([c, t]); entrants.get(c).push([s, t]);
+}
+const sansAccent = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+const champs = D.noeuds.map(n => ({ n, f: {
+  nom: sansAccent(n.nom), routes: sansAccent((n.routes || []).join(" ")), nom_url: sansAccent(n.nom_url),
+  chemin: sansAccent(n.chemin), role: sansAccent(n.role), doc: sansAccent(n.doc) } }));
+const POIDS = [["nom", 10], ["routes", 6], ["nom_url", 6], ["chemin", 4], ["role", 3], ["doc", 1]];
+
+function chercher(requete, limite = 60) {
+  const mots = sansAccent(requete).split(/\s+/).filter(Boolean);
+  if (!mots.length) return [];
+  const res = [];
+  for (const { n, f } of champs) {
+    let score = 0, ok = true;
+    for (const m of mots) {
+      let meilleur = 0;
+      for (const [c, p] of POIDS) {
+        const v = f[c];
+        if (v && v.includes(m)) meilleur = Math.max(meilleur, p * (v === m ? 3 : v.startsWith(m) ? 2 : 1));
+      }
+      if (!meilleur) { ok = false; break; }
+      score += meilleur;
+    }
+    if (!ok) continue;
+    if (["methode", "test", "migration"].includes(n.type)) score *= 0.6;
+    if (["ressource", "document", "config"].includes(n.type)) score *= 0.4;
+    res.push([score, n]);
+  }
+  res.sort((a, b) => b[0] - a[0] || a[1].id.length - b[1].id.length);
+  return res.slice(0, limite).map(r => r[1]);
+}
+
+// ------------------------------------------------------------------ outils d'affichage
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const couleur = t => `var(--t-${(TYPES[t] || ["", "gris"])[1]})`;
+const couleurRel = r => `var(--t-${(RELATIONS[r] || ["", "", "gris"])[2]})`;
+const badge = t => `<span class="badge" style="--c:${couleur(t)}">${esc((TYPES[t] || [t])[0])}</span>`;
+const lien = id => "#/n/" + encodeURIComponent(id);
+const emplacement = n => n.chemin + (n.ligne ? ":" + n.ligne : "");
+function libelle(n) {
+  if (n.type === "methode" || (n.parent && parId.get(n.parent) && TYPES[parId.get(n.parent).type] && n.id.includes("::") && n.id.split("::")[1].includes(".")))
+    return n.id.split("::")[1];
+  return n.nom;
+}
+function surligner(texte, mots) {
+  texte = String(texte || "");
+  if (!mots.length) return esc(texte);
+  const carte = [], plat = [];
+  for (let i = 0; i < texte.length; i++) { const c = sansAccent(texte[i]); for (const x of c || " ") { plat.push(x); carte.push(i); } }
+  const s = plat.join(""), marques = new Array(texte.length).fill(false);
+  for (const m of mots) { let k = s.indexOf(m); while (k >= 0) { for (let j = k; j < k + m.length; j++) marques[carte[j]] = true; k = s.indexOf(m, k + 1); } }
+  let html = "", dans = false;
+  for (let i = 0; i < texte.length; i++) {
+    if (marques[i] && !dans) { html += "<mark>"; dans = true; } else if (!marques[i] && dans) { html += "</mark>"; dans = false; }
+    html += esc(texte[i]);
+  }
+  return html + (dans ? "</mark>" : "");
+}
+function ancetres(id) {
+  const res = []; let p = parId.get(id)?.parent;
+  while (p != null && parId.has(p)) { res.unshift(p); p = parId.get(p).parent; }
+  return res;
+}
+function descendants(id, acc = new Set()) {
+  for (const e of enfants.get(id) || []) { acc.add(e); descendants(e, acc); }
+  return acc;
+}
+
+// ------------------------------------------------------------------ panneau latéral
+let onglet = "arbre", choisi = null;
+const ouverts = new Set(["."]);
+const panneau = document.getElementById("panneau");
+
+function rendreArbre() {
+  const ligne = (id, n) => {
+    const x = parId.get(id), fils = enfants.get(id) || [];
+    const ouvert = ouverts.has(id);
+    let html = `<li class="${ouvert ? "ouvert" : ""}"><div class="ligne${id === choisi ? " choisi" : ""}" style="--n:${n}" data-id="${esc(id)}">`
+      + (fils.length ? `<button class="fleche" data-bascule="${esc(id)}" aria-label="Déplier">${ICONE_FLECHE}</button>` : `<span class="fleche"></span>`)
+      + `<span class="pastille" style="--c:${couleur(x.type)}" title="${esc((TYPES[x.type] || [x.type])[0])}"></span>`
+      + `<span class="nom${x.type === "route" ? " mono" : ""}">${esc(x.nom)}</span>`
+      + (fils.length && x.type === "dossier" ? `<span class="compte">${fils.length}</span>` : "") + `</div>`;
+    if (ouvert && fils.length) html += `<ul>${fils.map(f => ligne(f, n + 1)).join("")}</ul>`;
+    return html + "</li>";
+  };
+  panneau.innerHTML = `<ul class="arbre">${(enfants.get(".") || []).map(id => ligne(id, 0)).join("")}</ul>`;
+  panneau.querySelector(".choisi")?.scrollIntoView({ block: "nearest" });
+}
+function rendreRoutes(filtre = "") {
+  const routes = D.noeuds.filter(n => n.type === "route").sort((a, b) => a.nom.localeCompare(b.nom));
+  const f = sansAccent(filtre);
+  const liste = routes.filter(r => !f || sansAccent(r.nom + " " + (r.nom_url || "") + " " + (r.vue_texte || "") + " " + (r.role || "")).includes(f));
+  panneau.innerHTML = `<input class="filtre" id="filtre-routes" placeholder="Filtrer ${routes.length} routes…" value="${esc(filtre)}">`
+    + `<ul class="arbre liste-routes">${liste.map(r => `<li><div class="ligne${r.id === choisi ? " choisi" : ""}" data-id="${esc(r.id)}"><div class="r">${esc(r.nom)}</div><div class="v">${esc(r.nom_url || "")}${r.nom_url && r.vue_texte ? " · " : ""}${esc(r.vue_texte || "")}</div></div></li>`).join("")}</ul>`;
+  const champ = document.getElementById("filtre-routes");
+  champ.addEventListener("input", () => { const pos = champ.selectionStart; rendreRoutes(champ.value); const c = document.getElementById("filtre-routes"); c.focus(); c.setSelectionRange(pos, pos); });
+}
+function rendreTypes() {
+  panneau.innerHTML = `<ul class="arbre">${Object.entries(D.types).sort((a, b) => b[1] - a[1]).map(([t, k]) =>
+    `<li><div class="ligne" data-type="${esc(t)}" style="--n:0"><span class="pastille" style="--c:${couleur(t)}"></span><span class="nom">${esc((TYPES[t] || [t])[0])}</span><span class="compte">${k}</span></div></li>`).join("")}</ul>`;
+}
+function rendrePanneau() {
+  document.querySelectorAll(".onglets button").forEach(b => b.setAttribute("aria-selected", String(b.dataset.onglet === onglet)));
+  if (onglet === "arbre") rendreArbre(); else if (onglet === "routes") rendreRoutes(); else rendreTypes();
+}
+document.querySelector(".onglets").addEventListener("click", e => {
+  const b = e.target.closest("button[data-onglet]"); if (!b) return;
+  onglet = b.dataset.onglet; rendrePanneau();
+});
+panneau.addEventListener("click", e => {
+  const bascule = e.target.closest("[data-bascule]");
+  if (bascule) { const id = bascule.dataset.bascule; ouverts.has(id) ? ouverts.delete(id) : ouverts.add(id); rendreArbre(); return; }
+  const l = e.target.closest(".ligne");
+  if (!l) return;
+  if (l.dataset.type) { location.hash = "#/t/" + l.dataset.type; return; }
+  const id = l.dataset.id;
+  if (enfants.get(id)?.length && parId.get(id).type === "dossier") ouverts.add(id);
+  location.hash = lien(id);
+});
+
+// ------------------------------------------------------------------ contenu
+const contenu = document.getElementById("contenu");
+
+// ------------------------------------------------------------------ serveur local : lecture, recherche dans le code, modification
+const SERVEUR = JSON.parse(document.getElementById("serveur").textContent);
+const TYPES_TEXTE = ["module", "migration", "gabarit", "script", "style", "document", "config"];
+const SANS_SERVEUR = `<div class="note">Pour chercher dans les lignes de code et modifier un fichier depuis cette page, ouvrez-la par le serveur local :
+  <code>python3 …/analyser.py . --serveur</code> (ou demandez à Claude « ouvre la carte du projet »).</div>`;
+async function api(chemin, options = {}) {
+  const r = await fetch(chemin, { ...options, headers: { "X-Jeton": SERVEUR.jeton, "Content-Type": "application/json", ...(options.headers || {}) } });
+  const donnees = await r.json().catch(() => ({ erreur: "Réponse illisible du serveur." }));
+  if (!r.ok && !donnees.erreur) donnees.erreur = `Erreur ${r.status}`;
+  return donnees;
+}
+const fichierTexte = id => { const n = parId.get(id); return n && TYPES_TEXTE.includes(n.type); };
+const fichierDe = n => (n.id.includes("::") ? n.chemin : n.id);
+const lienFichier = (chemin, ligne) => "#/f/" + encodeURIComponent(chemin + (ligne ? ":" + ligne : ""));
+const lienVSCode = (chemin, ligne) => `vscode://file/${encodeURI(D.racine + "/" + chemin)}${ligne ? ":" + ligne : ""}`;
+
+let edition = null; // { chemin, modifie } tant qu'un éditeur est ouvert
+
+/* Affiche le code d'un fichier (lignes debut–fin, ou tout le fichier), la ligne cible surlignée ; « Modifier » ouvre
+   l'éditeur sur tout le fichier, à cette ligne. Double-clic sur une ligne : l'éditeur s'ouvre à cette ligne. */
+async function montrerCode(zone, chemin, { cible = null, debut = null, fin = null, extrait = false } = {}) {
+  if (!SERVEUR) { zone.innerHTML = SANS_SERVEUR; return; }
+  zone.innerHTML = `<p class="aide">Lecture de ${esc(chemin)}…</p>`;
+  const f = await api("/api/fichier?chemin=" + encodeURIComponent(chemin));
+  if (f.erreur) { zone.innerHTML = `<div class="note erreur">${esc(f.erreur)} <a href="${lienVSCode(chemin, cible)}">Ouvrir dans VS Code</a></div>`; return; }
+  const lignes = f.contenu.split("\n");
+  if (lignes.length > 1 && lignes[lignes.length - 1] === "") lignes.pop();
+  const partiel = extrait && debut != null && fin != null && !(debut <= 1 && fin >= lignes.length);
+  const a = partiel ? Math.max(1, debut) : 1, b = partiel ? Math.min(lignes.length, fin) : lignes.length;
+  let html = "";
+  for (let i = a; i <= b; i++) {
+    html += `<div class="l${i === cible ? " cible" : ""}${partiel ? "" : (debut && i >= debut && i <= fin ? " zone" : "")}" data-ligne="${i}"><span class="n">${i}</span><span class="t">${esc(lignes[i - 1]) || " "}</span></div>`;
+  }
+  zone.innerHTML = `<div class="bloc-code"><div class="code-barre"><code>${esc(chemin)}</code><span>${partiel ? `lignes ${a}–${b} sur ${lignes.length}` : `${lignes.length} lignes`}</span>
+      <span class="espace"></span>${partiel ? `<button class="bouton" data-action="tout">Tout le fichier</button>` : ""}
+      <a class="bouton" href="${lienVSCode(chemin, cible || a)}">VS Code</a><button class="bouton principal" data-action="modifier">Modifier</button></div>
+    <div class="code">${html}</div></div>`;
+  const code = zone.querySelector(".code");
+  const ligneCible = code.querySelector(".cible") || (debut && !partiel ? code.querySelector(`[data-ligne="${debut}"]`) : null);
+  if (ligneCible) code.scrollTop = ligneCible.offsetTop - code.clientHeight / 3;
+  zone.querySelector('[data-action="tout"]')?.addEventListener("click", () => montrerCode(zone, chemin, { cible, debut, fin }));
+  zone.querySelector('[data-action="modifier"]').addEventListener("click", () => editer(zone, chemin, f, cible || a, { cible, debut, fin }));
+  code.addEventListener("dblclick", e => { const l = e.target.closest("[data-ligne]"); if (l) editer(zone, chemin, f, +l.dataset.ligne, { cible, debut, fin }); });
+  code.addEventListener("click", e => { const n = e.target.closest(".n"); if (n) { history.replaceState(null, "", lienFichier(chemin, n.parentNode.dataset.ligne)); code.querySelector(".cible")?.classList.remove("cible"); n.parentNode.classList.add("cible"); } });
+}
+
+function editer(zone, chemin, f, ligne, retour) {
+  let empreinte = f.empreinte;
+  zone.innerHTML = `<div class="bloc-code"><div class="code-barre"><code>${esc(chemin)}</code><span id="ed-etat">non modifié</span><span class="espace"></span>
+      <button class="bouton" data-action="annuler">Fermer</button><button class="bouton principal" data-action="enregistrer" disabled>Enregistrer <kbd>⌘S</kbd></button></div>
+    <div class="editeur"><pre class="gouttiere"></pre><textarea spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"></textarea></div>
+    <div class="etat-edition"><span id="ed-pos"></span><span id="ed-message"></span></div></div>`;
+  const ta = zone.querySelector("textarea"), gouttiere = zone.querySelector(".gouttiere");
+  const bouton = zone.querySelector('[data-action="enregistrer"]'), etat = zone.querySelector("#ed-etat"), message = zone.querySelector("#ed-message"), pos = zone.querySelector("#ed-pos");
+  ta.value = f.contenu;
+  edition = { chemin, modifie: false };
+  const numeros = () => { const k = ta.value.split("\n").length; let s = ""; for (let i = 1; i <= k; i++) s += i + "\n"; gouttiere.textContent = s; };
+  const position = () => { const avant = ta.value.slice(0, ta.selectionStart).split("\n"); pos.textContent = `ligne ${avant.length}, colonne ${avant[avant.length - 1].length + 1}`; };
+  numeros();
+  // place le curseur sur la ligne visée et la sélectionne
+  const lignes = ta.value.split("\n"); let debutLigne = 0;
+  for (let i = 0; i < Math.min(ligne - 1, lignes.length); i++) debutLigne += lignes[i].length + 1;
+  ta.focus(); ta.setSelectionRange(debutLigne, debutLigne + (lignes[ligne - 1] || "").length);
+  ta.scrollTop = Math.max(0, (ligne - 8) * 20); gouttiere.scrollTop = ta.scrollTop; position();
+  ta.addEventListener("scroll", () => { gouttiere.scrollTop = ta.scrollTop; });
+  ta.addEventListener("input", () => { edition.modifie = ta.value !== f.contenu; bouton.disabled = !edition.modifie; etat.textContent = edition.modifie ? "modifié, non enregistré" : "non modifié"; numeros(); position(); });
+  ta.addEventListener("keyup", position); ta.addEventListener("click", position);
+  ta.addEventListener("keydown", e => {
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); if (!bouton.disabled) enregistrer(); }
+    else if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end"); ta.dispatchEvent(new Event("input")); }
+  });
+  async function enregistrer() {
+    bouton.disabled = true; message.textContent = "Enregistrement…";
+    const r = await api("/api/fichier", { method: "POST", body: JSON.stringify({ chemin, contenu: ta.value, empreinte }) });
+    if (r.erreur) { message.innerHTML = `<span style="color:var(--t-rose)">${esc(r.erreur)}</span>`; bouton.disabled = false; return; }
+    empreinte = r.empreinte; f.contenu = ta.value; f.empreinte = r.empreinte; edition.modifie = false;
+    etat.textContent = "enregistré"; message.innerHTML = r.recalcul ? esc(r.recalcul) : `Enregistré, carte recalculée. <a href="#" id="ed-recharger">Recharger la page</a> pour voir les nouveaux liens.`;
+    zone.querySelector("#ed-recharger")?.addEventListener("click", e => { e.preventDefault(); location.reload(); });
+  }
+  bouton.addEventListener("click", enregistrer);
+  zone.querySelector('[data-action="annuler"]').addEventListener("click", () => {
+    if (edition?.modifie && !confirm("Fermer sans enregistrer les modifications ?")) return;
+    edition = null; const avant = ta.selectionStart, n = ta.value.slice(0, avant).split("\n").length;
+    montrerCode(zone, chemin, { ...retour, cible: n });
+  });
+}
+window.addEventListener("beforeunload", e => { if (edition?.modifie) { e.preventDefault(); e.returnValue = ""; } });
+
+function rendreFichier(valeur) {
+  const m = valeur.match(/^(.*?)(?::(\d+))?$/), chemin = m[1], ligne = m[2] ? +m[2] : null;
+  const n = parId.get(chemin);
+  let symbole = null;
+  if (ligne) for (const e of descendants(chemin)) { const x = parId.get(e); if (x.ligne && x.fin && x.ligne <= ligne && ligne <= x.fin && (!symbole || x.ligne >= symbole.ligne)) symbole = x; }
+  contenu.innerHTML = `<div class="fil">${ancetres(chemin).map(a => `<a href="${lien(a)}">${esc(parId.get(a)?.nom || a)}</a>`).join(" / ")}</div>
+    <h2>${esc(n ? n.nom : chemin)}${ligne ? ` <span class="badge" style="--c:var(--t-gris)">ligne ${ligne}</span>` : ""} ${n ? badge(n.type) : ""}</h2>
+    <div class="emplacement">${n ? `<a href="${lien(chemin)}">Fiche du fichier</a>` : ""}${symbole ? `<span>dans <a href="${lien(symbole.id)}">${esc(libelle(symbole))}</a> ${badge(symbole.type)}</span>` : ""}</div>
+    <p class="role">${esc(symbole?.role || n?.role || "")}</p><div id="zone-code"></div>`;
+  montrerCode(document.getElementById("zone-code"), chemin, { cible: ligne, debut: symbole?.ligne, fin: symbole?.fin });
+  document.title = `${chemin}${ligne ? ":" + ligne : ""} — Carte ${D.projet}`;
+}
+
+// ------------------------------------------------------------------ plan relié : arborescence détaillée avec les liens entre ses lignes
+const plan = { ouverts: new Set(), choisi: null, rels: new Set(ORDRE_REL.filter(r => r !== "importe")) };
+const HL = 26;
+function rendrePlan(zone) {
+  const lignes = [], rang = new Map();
+  (function parcourir(id, n) {
+    for (const e of enfants.get(id) || []) {
+      if (lignes.length >= 2500) return;
+      rang.set(e, lignes.length); lignes.push([e, n]);
+      if (plan.ouverts.has(e)) parcourir(e, n + 1);
+    }
+  })(".", 0);
+  const memo = new Map();
+  const rep = id => { if (memo.has(id)) return memo.get(id); let x = id; while (x != null && !rang.has(x)) x = parId.get(x)?.parent; memo.set(id, x ?? null); return x ?? null; };
+  const flux = new Map();
+  for (const [s, c, t] of D.liens) {
+    if (!plan.rels.has(t)) continue;
+    const a = rep(s), b = rep(c);
+    if (a == null || b == null || a === b) continue;
+    const k = a + "\u0000" + b; let f = flux.get(k);
+    if (!f) flux.set(k, f = { a, b, n: 0, types: new Map() });
+    f.n++; f.types.set(t, (f.types.get(t) || 0) + 1);
+  }
+  const larg = Math.max(300, Math.min(560, Math.floor(zone.clientWidth * 0.48) || 480));
+  const choisi = plan.choisi && rang.has(plan.choisi) ? plan.choisi : null;
+  const relies = new Set(), compte = new Map();
+  for (const f of flux.values()) {
+    compte.set(f.a, (compte.get(f.a) || 0) + f.n); compte.set(f.b, (compte.get(f.b) || 0) + f.n);
+    if (choisi && f.a === choisi) relies.add(f.b);
+    if (choisi && f.b === choisi) relies.add(f.a);
+  }
+  const largArcs = Math.max(260, (zone.clientWidth || 900) - larg - 20);
+  let arcs = "";
+  const liste = [...flux.values()].filter(f => !choisi || f.a === choisi || f.b === choisi).sort((x, y) => x.n - y.n);
+  const maxN = Math.max(1, ...liste.map(f => f.n));
+  const visibles = choisi ? liste : liste.slice(-700);
+  for (const f of visibles) {
+    const ya = rang.get(f.a) * HL + HL / 2, yb = rang.get(f.b) * HL + HL / 2;
+    const bombe = Math.min(largArcs - 30, 18 + Math.abs(yb - ya) * 0.38);
+    const dominant = [...f.types.entries()].sort((x, y) => y[1] - x[1])[0][0];
+    const titre = `${parId.get(f.a).nom} → ${parId.get(f.b).nom} : ${f.n} lien${f.n > 1 ? "s" : ""} (${[...f.types].map(([t, k]) => RELATIONS[t][0] + " " + k).join(", ")})`;
+    const sortant = f.a === choisi;
+    const couleurArc = choisi ? (sortant ? couleurRel(dominant) : couleurRel(dominant)) : "var(--texte-2)";
+    const epais = choisi ? 1.2 + 3.5 * Math.log1p(f.n) / Math.log1p(maxN) : 0.6 + 2 * f.n / maxN;
+    const opacite = choisi ? 0.9 : 0.12 + 0.4 * f.n / maxN;
+    arcs += `<path d="M2,${ya} C${bombe},${ya} ${bombe},${yb} 8,${yb}" stroke="${couleurArc}" stroke-width="${epais.toFixed(2)}" opacity="${opacite.toFixed(2)}" ${choisi ? `marker-end="url(#fleche)"` : ""} ${choisi && !sortant ? `stroke-dasharray="5 3"` : ""}><title>${esc(titre)}</title></path>`;
+    if (choisi) arcs += `<text x="${bombe * 0.75 + 4}" y="${(ya + yb) / 2 + 3}">${f.n}</text>`;
+  }
+  const html = lignes.map(([id, n]) => {
+    const x = parId.get(id), fils = (enfants.get(id) || []).length, ouvert = plan.ouverts.has(id);
+    return `<div class="pl-ligne${id === choisi ? " choisi" : ""}${relies.has(id) ? " relie" : ""}" data-id="${esc(id)}" style="--n:${n}"><span class="pl-etiquette">`
+      + (fils ? `<button class="fleche" data-pl-bascule aria-label="Déplier" style="${ouvert ? "transform:rotate(90deg)" : ""}">${ICONE_FLECHE}</button>` : `<span class="fleche"></span>`)
+      + `<span class="pastille" style="--c:${couleur(x.type)}" title="${esc((TYPES[x.type] || [x.type])[0])}"></span>`
+      + `<span class="nom${x.type === "route" ? " mono" : ""}">${esc(x.nom)}${x.type === "dossier" ? "/" : ""}</span>`
+      + `<span class="role-court" title="${esc(x.role || "")}">${esc(x.role || "")}</span></span>`
+      + `<a class="fiche" href="${lien(id)}" title="Ouvrir la fiche">↗</a>`
+      + `<span class="nb" title="liens visibles">${compte.get(id) || ""}</span></div>`;
+  }).join("");
+  const presentes = ORDRE_REL.filter(r => D.liens.some(l => l[2] === r));
+  zone.innerHTML = `<div class="plan-outils">
+      <button class="bouton" data-pl="dossiers">Déplier les dossiers</button><button class="bouton" data-pl="fichiers">Déplier jusqu'aux fonctions</button><button class="bouton" data-pl="replier">Tout replier</button>
+      <span class="rels">${presentes.map(r => `<label><input type="checkbox" data-rel="${r}" ${plan.rels.has(r) ? "checked" : ""}><i class="trait" style="--c:${couleurRel(r)}"></i>${esc(RELATIONS[r][0])}</label>`).join("")}</span></div>
+    <div class="plan${choisi ? " selection" : ""}" style="--larg:${larg}px"><div class="plan-interieur">${html}
+      <svg class="arcs" style="left:${larg}px" width="${largArcs}" height="${lignes.length * HL}"><defs><marker id="fleche" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8z" fill="var(--texte-2)"/></marker></defs>${arcs}</svg></div></div>
+    <div class="plan-detail">${choisi ? detailPlan(choisi, flux) : `<p class="aide">Cliquez sur une ligne pour voir ses liens (trait plein : sortants, pointillé : entrants) ; la flèche ▸ déplie ; ↗ ouvre la fiche. Les liens d'un élément replié sont reportés sur son dossier ou son fichier.</p>`}</div>`;
+  zone.onclick = e => {
+    const bouton = e.target.closest("[data-pl]");
+    if (bouton) {
+      const action = bouton.dataset.pl;
+      if (action === "replier") plan.ouverts.clear();
+      else for (const n of D.noeuds) {
+        if (n.type === "dossier" && n.id !== ".") plan.ouverts.add(n.id);
+        if (action === "fichiers" && enfants.get(n.id)?.length && n.type !== "dossier" && !["classe", "modele", "vue", "formulaire", "admin", "test"].includes(n.type)) plan.ouverts.add(n.id);
+      }
+      return rendrePlan(zone);
+    }
+    if (e.target.closest("a")) return;
+    const lienPlan = e.target.closest("[data-pl-aller]");
+    if (lienPlan) { const id = lienPlan.dataset.plAller; for (const a of ancetres(id)) plan.ouverts.add(a); plan.choisi = id; rendrePlan(zone); zone.querySelector(".pl-ligne.choisi")?.scrollIntoView({ block: "center" }); return; }
+    const l = e.target.closest(".pl-ligne"); if (!l) return;
+    const id = l.dataset.id;
+    if (e.target.closest("[data-pl-bascule]")) { plan.ouverts.has(id) ? plan.ouverts.delete(id) : plan.ouverts.add(id); }
+    else plan.choisi = plan.choisi === id ? null : id;
+    rendrePlan(zone);
+  };
+  zone.ondblclick = e => { const l = e.target.closest(".pl-ligne"); if (!l || e.target.closest("a, button")) return; const id = l.dataset.id; plan.ouverts.has(id) ? plan.ouverts.delete(id) : plan.ouverts.add(id); rendrePlan(zone); };
+  zone.onchange = e => { const r = e.target.dataset.rel; if (!r) return; e.target.checked ? plan.rels.add(r) : plan.rels.delete(r); rendrePlan(zone); };
+}
+function detailPlan(id, flux) {
+  const n = parId.get(id), sort = [], entre = [];
+  for (const f of flux.values()) { if (f.a === id) sort.push(f); if (f.b === id) entre.push(f); }
+  const bloc = (titre, liste, cle) => `<div class="groupe carte"><h4>${titre} <span class="n">${liste.reduce((s, f) => s + f.n, 0)}</span></h4><ul>${liste.sort((a, b) => b.n - a.n).map(f => {
+    const x = parId.get(f[cle]);
+    return `<li><span class="pastille" style="--c:${couleur(x.type)}"></span><a href="#" data-pl-aller="${esc(x.id)}" onclick="return false">${esc(x.nom)}</a><span class="ou">${f.n} · ${[...f.types.keys()].map(t => esc(RELATIONS[t][cle === "b" ? 0 : 1])).join(", ")}</span></li>`; }).join("") || `<li class="aide">aucun</li>`}</ul></div>`;
+  return `<div class="carte" style="margin-bottom:10px"><strong>${esc(n.nom)}</strong> ${badge(n.type)} <a href="${lien(id)}">fiche</a>${fichierTexte(fichierDe(n)) ? ` · <a href="${lienFichier(fichierDe(n), n.ligne)}">code</a>` : ""}<div class="aide">${esc(n.role || "")}</div></div>
+    <div class="groupes">${bloc("Liens sortants vers", sort, "b")}${bloc("Liens entrants depuis", entre, "a")}</div>`;
+}
+
+function liensDe(id, avecContenu) {
+  const ensemble = new Set([id]);
+  if (avecContenu) descendants(id, ensemble);
+  const sort = new Map(), entre = new Map();
+  for (const membre of ensemble) {
+    for (const [c, t] of sortants.get(membre) || []) if (!ensemble.has(c)) { if (!sort.has(t)) sort.set(t, new Set()); sort.get(t).add(c); }
+    for (const [s, t] of entrants.get(membre) || []) if (!ensemble.has(s)) { if (!entre.has(t)) entre.set(t, new Set()); entre.get(t).add(s); }
+  }
+  return { sort, entre };
+}
+
+function graphe(id, sort, entre) {
+  const aplatir = m => ORDRE_REL.flatMap(t => [...(m.get(t) || [])].map(x => [x, t]));
+  const largeur = Math.max(640, Math.min(1200, contenu.clientWidth - 60));
+  const MAX = 12, L = Math.min(240, Math.floor((largeur - 40) / 3.3)), H = 30, G = 8, CAR = Math.floor((L - 80) / 6.6);
+  const gauche = aplatir(entre), droite = aplatir(sort);
+  const g = gauche.slice(0, MAX), d = droite.slice(0, MAX);
+  const lignes = Math.max(g.length + (gauche.length > MAX), d.length + (droite.length > MAX), 1);
+  const hauteur = lignes * (H + G) + 20, cx = largeur / 2, cy = hauteur / 2;
+  const boite = (x, y, n, centre) => {
+    const nom = (n.type === "route" ? n.nom : libelle(n)), court = nom.length > CAR ? nom.slice(0, CAR - 1) + "…" : nom;
+    return `<g class="boite${centre ? " centre" : ""}" data-id="${esc(n.id)}" transform="translate(${x},${y})"><title>${esc(nom + " — " + emplacement(n))}</title>`
+      + `<rect width="${L}" height="${H}" rx="6"/><circle cx="12" cy="${H / 2}" r="4" fill="${couleur(n.type)}"/>`
+      + `<text x="22" y="${H / 2 + 4}">${esc(court)}</text><text class="type" x="${L - 8}" y="${H / 2 + 3.5}" text-anchor="end">${esc((TYPES[n.type] || [n.type])[0])}</text></g>`;
+  };
+  const yDe = (i, k) => cy - (k * (H + G) - G) / 2 + i * (H + G);
+  let svg = "";
+  const kg = g.length + (gauche.length > MAX), kd = d.length + (droite.length > MAX);
+  g.forEach(([x, t], i) => { const y = yDe(i, kg) + H / 2; svg += `<path d="M${10 + L},${y} C${cx - 150},${y} ${cx - 220},${cy} ${cx - L / 2},${cy}" stroke="${couleurRel(t)}"><title>${esc(RELATIONS[t][0])}</title></path>`; });
+  d.forEach(([x, t], i) => { const y = yDe(i, kd) + H / 2; svg += `<path d="M${cx + L / 2},${cy} C${cx + 220},${cy} ${cx + 150},${y} ${largeur - 10 - L},${y}" stroke="${couleurRel(t)}"><title>${esc(RELATIONS[t][0])}</title></path>`; });
+  g.forEach(([x], i) => { svg += boite(10, yDe(i, kg), parId.get(x)); });
+  d.forEach(([x], i) => { svg += boite(largeur - 10 - L, yDe(i, kd), parId.get(x)); });
+  if (gauche.length > MAX) svg += `<text class="plus" x="${10 + L / 2}" y="${yDe(MAX, kg) + H / 2}" text-anchor="middle">+ ${gauche.length - MAX} autres</text>`;
+  if (droite.length > MAX) svg += `<text class="plus" x="${largeur - 10 - L / 2}" y="${yDe(MAX, kd) + H / 2}" text-anchor="middle">+ ${droite.length - MAX} autres</text>`;
+  svg += boite(cx - L / 2, cy - H / 2, parId.get(id), true);
+  if (!gauche.length) svg += `<text class="plus" x="${10 + L / 2}" y="${cy + 4}" text-anchor="middle">aucun lien entrant</text>`;
+  if (!droite.length) svg += `<text class="plus" x="${largeur - 10 - L / 2}" y="${cy + 4}" text-anchor="middle">aucun lien sortant</text>`;
+  const presentes = ORDRE_REL.filter(t => sort.has(t) || entre.has(t));
+  return `<div class="legende"><span>← entrants</span>${presentes.map(t => `<span><i class="trait" style="--c:${couleurRel(t)}"></i>${esc(RELATIONS[t][0])}</span>`).join("")}<span>sortants →</span></div>`
+    + `<div class="graphe"><svg viewBox="0 0 ${largeur} ${hauteur}" width="${largeur}" height="${hauteur}">${svg}</svg></div>`;
+}
+
+function groupes(sort, entre) {
+  const blocs = [];
+  for (const t of ORDRE_REL) for (const [m, sens] of [[sort, 0], [entre, 1]]) {
+    const ids = [...(m.get(t) || [])]; if (!ids.length) continue;
+    ids.sort((a, b) => libelle(parId.get(a)).localeCompare(libelle(parId.get(b))));
+    blocs.push(`<div class="groupe carte"><h4><i class="trait" style="--c:${couleurRel(t)}"></i>${esc(RELATIONS[t][sens])} <span class="n">${ids.length}</span></h4><ul>`
+      + ids.map(x => { const n = parId.get(x); return `<li><span class="pastille" style="--c:${couleur(n.type)}" title="${esc((TYPES[n.type] || [n.type])[0])}"></span><a href="${lien(x)}" title="${esc(n.role || "")}">${esc(n.type === "route" ? n.nom : libelle(n))}</a><span class="ou">${esc(n.type === "route" ? n.nom_url || "" : emplacement(n))}</span></li>`; }).join("")
+      + `</ul></div>`);
+  }
+  return blocs.length ? `<div class="groupes">${blocs.join("")}</div>` : `<p class="aide">Aucune interaction détectée.</p>`;
+}
+
+let avecContenu = true;
+function rendreNoeud(id) {
+  const n = parId.get(id);
+  if (!n) { contenu.innerHTML = `<p class="aide">Élément introuvable.</p>`; return; }
+  choisi = id;
+  for (const a of ancetres(id)) ouverts.add(a);
+  if (onglet === "arbre") rendreArbre(); else if (onglet === "routes") rendreRoutes(document.getElementById("filtre-routes")?.value || "");
+  const fils = enfants.get(id) || [];
+  const regroupable = ["module", "gabarit", "classe", "modele", "vue", "formulaire", "admin", "test", "commande", "script", "style"].includes(n.type) && fils.length;
+  const { sort, entre } = liensDe(id, regroupable && avecContenu);
+  const fil = ancetres(id).map(a => `<a href="${lien(a)}">${esc(parId.get(a).nom)}</a>`).join(" / ");
+  const ouvrir = n.chemin && D.racine ? `<a href="${lienVSCode(n.chemin, n.ligne)}">Ouvrir dans VS Code</a>${fichierTexte(fichierDe(n)) && n.type !== "route" ? ` <a href="${lienFichier(fichierDe(n), n.ligne)}">Voir dans le fichier</a>` : ""}` : "";
+  const routes = (n.routes || []).length ? `<div class="routes-vue">${[...entre.get("sert") || []].map(r => `<a href="${lien(r)}">${esc(parId.get(r).nom)}</a>`).join("")}</div>` : "";
+  const infosRoute = n.type === "route" ? `<p class="emplacement">${n.nom_url ? `<span>nom d'URL : <code>${esc(n.nom_url)}</code></span>` : ""}<span>vue : <code>${esc(n.vue_texte || "")}</code></span></p>` : "";
+  contenu.innerHTML = `
+    <div class="fil">${fil}</div>
+    <h2>${esc(n.type === "route" ? n.nom : libelle(n))} ${badge(n.type)}</h2>
+    <div class="emplacement"><code>${esc(emplacement(n) || "(racine)")}</code>${ouvrir}</div>
+    ${infosRoute}
+    <p class="role${n.role ? "" : " vide"}">${esc(n.role || "Rôle non décrit : ajoutez une docstring, un commentaire d'en-tête, ou une entrée dans .carte-projet/roles.json.")}</p>
+    ${n.role ? `<div class="source">Source du rôle : ${esc(SOURCES[n.source] || n.source || "")}</div>` : ""}
+    ${routes}
+    ${n.id.includes("::") && fichierTexte(n.chemin) ? `<h3>Code</h3><div id="zone-code"></div>` : ""}
+    <h3>Interactions ${regroupable ? `<label class="bascule"><input type="checkbox" id="avec-contenu" ${avecContenu ? "checked" : ""}> inclure son contenu (${fils.length})</label>` : ""}</h3>
+    ${graphe(id, sort, entre)}
+    ${groupes(sort, entre)}
+    ${fils.length ? `<h3>Contenu (${fils.length})</h3><div class="groupe carte"><ul style="max-height:420px">${fils.map(f => { const x = parId.get(f); return `<li><span class="pastille" style="--c:${couleur(x.type)}"></span><a href="${lien(f)}">${esc(x.type === "route" ? x.nom : libelle(x))}</a><span class="ou">${esc(x.role || "")}</span></li>`; }).join("")}</ul></div>` : ""}
+    ${n.doc && n.doc.length > (n.role || "").length + 5 ? `<h3>Documentation</h3><div class="carte"><pre class="doc">${esc(n.doc)}</pre></div>` : ""}
+    ${!n.id.includes("::") && fichierTexte(n.id) ? `<h3>Code du fichier</h3><div id="zone-code"></div>` : ""}`;
+  contenu.querySelector("#avec-contenu")?.addEventListener("change", e => { avecContenu = e.target.checked; rendreNoeud(id); });
+  const zoneCode = document.getElementById("zone-code");
+  if (zoneCode) montrerCode(zoneCode, fichierDe(n), n.id.includes("::") ? { cible: n.ligne, debut: n.ligne, fin: n.fin || n.ligne, extrait: true } : {});
+  contenu.scrollTop = 0;
+  document.title = `${n.nom} — Carte ${D.projet}`;
+}
+
+function rendreRecherche(requete) {
+  const res = chercher(requete), mots = sansAccent(requete).split(/\s+/).filter(Boolean);
+  contenu.innerHTML = `<h2>« ${esc(requete)} »</h2>
+    <p class="aide">Entrée ouvre le résultat choisi ; ↑ ↓ pour choisir. Éléments : nom, route, chemin, rôle et documentation. Lignes de code : le texte exact, dans tous les fichiers texte.</p>
+    <h3>Lignes de code <span id="nb-code"></span><span class="options-code"><label><input type="checkbox" id="opt-casse" ${optionsCode.casse ? "checked" : ""}> respecter la casse</label><label><input type="checkbox" id="opt-regex" ${optionsCode.regex ? "checked" : ""}> expression régulière</label></span></h3>
+    <div id="res-code">${SERVEUR ? `<p class="aide">Recherche…</p>` : SANS_SERVEUR}</div>
+    <h3>Éléments <span class="badge" style="--c:var(--t-gris)">${res.length === 60 ? "60+" : res.length}</span></h3>
+    <ul class="resultats">${res.map((n, i) => {
+      const s = (sortants.get(n.id) || []).length, e = (entrants.get(n.id) || []).length;
+      const routes = (n.routes || []).length ? ` · routes ${n.routes.map(r => surligner(r, mots)).join(", ")}` : "";
+      return `<li data-id="${esc(n.id)}" class="${i === 0 ? "actif" : ""}"><div class="titre">${badge(n.type)}<span>${surligner(n.type === "route" ? n.nom : libelle(n), mots)}</span></div>
+        <div class="chemin mono">${surligner(emplacement(n), mots)}${n.nom_url ? " · " + surligner(n.nom_url, mots) : ""}${routes}</div>
+        ${n.role ? `<div class="extrait">${surligner(n.role, mots)}</div>` : ""}
+        <div class="liens-courts">${s} lien${s > 1 ? "s" : ""} sortant${s > 1 ? "s" : ""} · ${e} entrant${e > 1 ? "s" : ""}</div></li>`;
+    }).join("")}</ul>${res.length ? "" : `<p class="aide">Aucun élément ne correspond. Essayez un mot plus court, ou sans accent.</p>`}`;
+  document.title = `${requete} — Carte ${D.projet}`;
+  for (const [cle, champ] of [["casse", "opt-casse"], ["regex", "opt-regex"]])
+    document.getElementById(champ).addEventListener("change", e => { optionsCode[cle] = e.target.checked; chercherCode(requete); });
+  chercherCode(requete);
+}
+const optionsCode = { casse: false, regex: false };
+let derniereRecherche = 0;
+async function chercherCode(requete) {
+  if (!SERVEUR) return;
+  const numero = ++derniereRecherche;
+  const r = await api(`/api/code?q=${encodeURIComponent(requete)}&casse=${optionsCode.casse ? 1 : 0}&regex=${optionsCode.regex ? 1 : 0}`);
+  const zone = document.getElementById("res-code");
+  if (numero !== derniereRecherche || !zone) return;
+  if (r.erreur) { zone.innerHTML = `<div class="note erreur">${esc(r.erreur)}</div>`; return; }
+  const parFichier = new Map();
+  for (const x of r.resultats) { if (!parFichier.has(x.chemin)) parFichier.set(x.chemin, []); parFichier.get(x.chemin).push(x); }
+  document.getElementById("nb-code").innerHTML = `<span class="badge" style="--c:var(--t-gris)">${r.resultats.length}${r.tronque ? "+" : ""} dans ${parFichier.size} fichier${parFichier.size > 1 ? "s" : ""}</span>`;
+  const MAX_LIGNES = 8;
+  let html = "";
+  for (const [chemin, liste] of parFichier) {
+    const n = parId.get(chemin);
+    html += `<li class="fichier">${n ? `<span class="pastille" style="--c:${couleur(n.type)}"></span>` : ""}<a href="${lien(chemin)}">${esc(chemin)}</a><span class="aide">${liste.length}</span></li>`;
+    for (const x of liste.slice(0, MAX_LIGNES)) {
+      const t = x.texte, avant = t.slice(0, x.debut), milieu = t.slice(x.debut, x.fin), apres = t.slice(x.fin);
+      const debutVisible = Math.max(0, avant.length - 60);
+      html += `<li class="ligne-code" data-f="${esc(chemin + ":" + x.ligne)}"><span class="num">${x.ligne}</span><span class="txt">${debutVisible ? "…" : ""}${esc(avant.slice(debutVisible).replace(/^\s+/, ""))}<mark>${esc(milieu)}</mark>${esc(apres)}</span>${x.symbole ? `<span class="dans">${esc(x.symbole.nom)}</span>` : ""}</li>`;
+    }
+    if (liste.length > MAX_LIGNES) html += `<li class="ligne-code aide" data-f="${esc(chemin + ":" + liste[MAX_LIGNES].ligne)}"><span class="num"></span>… ${liste.length - MAX_LIGNES} autre${liste.length - MAX_LIGNES > 1 ? "s" : ""} ligne${liste.length - MAX_LIGNES > 1 ? "s" : ""} dans ce fichier</li>`;
+  }
+  zone.innerHTML = r.resultats.length ? `<ul class="lignes-code">${html}</ul>` : `<p class="aide">Aucune ligne ne contient ce texte.</p>`;
+}
+
+function rendreType(t) {
+  const liste = D.noeuds.filter(n => n.type === t).sort((a, b) => a.chemin.localeCompare(b.chemin) || (a.ligne || 0) - (b.ligne || 0));
+  contenu.innerHTML = `<h2>${esc((TYPES[t] || [t])[0])} ${badge(t)} <span class="badge" style="--c:var(--t-gris)">${liste.length}</span></h2>
+    <div class="groupe carte"><ul style="max-height:none">${liste.map(n => `<li><a href="${lien(n.id)}">${esc(n.type === "route" ? n.nom : libelle(n))}</a><span class="ou">${esc(n.role || emplacement(n))}</span></li>`).join("")}</ul></div>`;
+}
+
+function rendreAccueil() {
+  choisi = null;
+  contenu.innerHTML = `
+    <h2>${esc(D.projet)}</h2>
+    <p class="aide">${D.noeuds.length} éléments, ${D.liens.length} liens · carte générée le ${esc(new Date(D.genere_le).toLocaleString("fr-FR"))}. Tapez <kbd>/</kbd> pour chercher un élément ou une ligne de code.</p>
+    <h3>Par type</h3>
+    <div class="tuiles">${Object.entries(D.types).sort((a, b) => b[1] - a[1]).map(([t, k]) => `<div class="tuile" data-type="${esc(t)}"><b>${k}</b>${badge(t)}</div>`).join("")}</div>
+    <h3>Plan relié du projet</h3>
+    <div id="zone-plan"></div>`;
+  rendrePlan(document.getElementById("zone-plan"));
+  document.title = `Carte ${D.projet}`;
+  if (onglet === "arbre") rendreArbre();
+}
+
+contenu.addEventListener("click", e => {
+  const ligneCode = e.target.closest("[data-f]");
+  if (ligneCode) { location.hash = lienFichier(...ligneCode.dataset.f.match(/^(.*):(\d+)$/).slice(1)); return; }
+  if (!contenu.contains(e.target) || e.target.closest("#zone-plan, #zone-code")) return; // élément remplacé par un nouveau rendu
+  const cible = e.target.closest("[data-id], [data-type]");
+  if (!cible || e.target.closest("a")) return;
+  if (cible.dataset.type && !cible.dataset.id) location.hash = "#/t/" + cible.dataset.type;
+  else if (cible.dataset.id) location.hash = lien(cible.dataset.id);
+});
+
+// ------------------------------------------------------------------ navigation et recherche
+const q = document.getElementById("q");
+let hashPrecedent = location.hash;
+function router() {
+  if (edition?.modifie && location.hash !== hashPrecedent) {
+    if (!confirm("Des modifications ne sont pas enregistrées. Quitter l'éditeur quand même ?")) { history.replaceState(null, "", hashPrecedent); return; }
+  }
+  edition = null; hashPrecedent = location.hash;
+  const h = decodeURIComponent(location.hash.slice(2));
+  if (h.startsWith("f/")) { rendreFichier(h.slice(2)); return; }
+  if (h.startsWith("n/")) rendreNoeud(h.slice(2));
+  else if (h.startsWith("q/")) { if (q.value !== h.slice(2)) q.value = h.slice(2); rendreRecherche(h.slice(2)); }
+  else if (h.startsWith("t/")) rendreType(h.slice(2));
+  else rendreAccueil();
+}
+let minuterie;
+q.addEventListener("input", () => {
+  clearTimeout(minuterie);
+  minuterie = setTimeout(() => { const v = q.value.trim(); history.replaceState(null, "", v ? "#/q/" + encodeURIComponent(v) : "#/"); router(); }, 120);
+});
+q.addEventListener("keydown", e => {
+  const items = [...contenu.querySelectorAll(".lignes-code li.ligne-code, .resultats li")];
+  let i = items.findIndex(x => x.classList.contains("actif"));
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); if (!items.length) return;
+    items[i]?.classList.remove("actif"); i = Math.max(0, Math.min(items.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)));
+    items[i].classList.add("actif"); items[i].scrollIntoView({ block: "nearest" });
+  } else if (e.key === "Enter" && items[i]) {
+    location.hash = "#/q/" + encodeURIComponent(q.value.trim()); // garde la recherche dans l'historique
+    const choix = items[i];
+    setTimeout(() => { location.hash = choix.dataset.f ? lienFichier(...choix.dataset.f.match(/^(.*):(\d+)$/).slice(1)) : lien(choix.dataset.id); }, 0);
+  } else if (e.key === "Escape") { q.value = ""; location.hash = "#/"; q.blur(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "/" && document.activeElement !== q && !/input|textarea/i.test(document.activeElement.tagName)) { e.preventDefault(); q.focus(); q.select(); }
+});
+document.getElementById("titre").addEventListener("click", () => { q.value = ""; location.hash = "#/"; });
+document.getElementById("theme").addEventListener("click", () => {
+  const sombre = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = sombre ? "light" : "dark";
+  try { localStorage.setItem("carte-theme", document.documentElement.dataset.theme); } catch (_) {}
+});
+try { const t = localStorage.getItem("carte-theme"); if (t) document.documentElement.dataset.theme = t; } catch (_) {}
+document.getElementById("nom-projet").textContent = D.projet;
+document.getElementById("meta").textContent = `${D.noeuds.length} éléments · ${D.liens.length} liens`;
+window.addEventListener("hashchange", router);
+rendrePanneau();
+router();
+</script>
+</body>
+</html>
