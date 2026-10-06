@@ -197,13 +197,14 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: v
 </head>
 <body>
 <header class="entete">
-  <h1 id="titre" title="Vue d'ensemble">Carte <span id="nom-projet"></span></h1>
+  <h1 id="titre" title="Vue d'ensemble"><span id="mot-carte">Carte</span> <span id="nom-projet"></span></h1>
   <div class="recherche">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
     <input id="q" type="search" placeholder="Chercher un élément, une route, un rôle… (ex. « bordereau », « /envois/ », « taux »)" autocomplete="off" spellcheck="false">
     <kbd>/</kbd>
   </div>
   <span class="meta" id="meta"></span>
+  <button class="theme langue" id="langue" title="English / français">EN</button>
   <button class="theme" id="theme" title="Thème clair ou sombre">◐</button>
 </header>
 <div class="page">
@@ -223,24 +224,46 @@ h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: v
 "use strict";
 const D = JSON.parse(document.getElementById("donnees").textContent);
 
+// ------------------------------------------------------------------ langue : français ou anglais (?lang=, choix mémorisé, navigateur)
+const LANGUE = (() => {
+  const demandee = new URLSearchParams(location.search).get("lang");
+  if (demandee === "fr" || demandee === "en") return demandee;
+  try { const l = localStorage.getItem("carte-langue"); if (l === "fr" || l === "en") return l; } catch (_) {}
+  return /^fr\b/i.test(navigator.language || "") ? "fr" : "en";
+})();
+const EN = LANGUE === "en";
+const t = (fr, en) => (EN ? en : fr);
+const pluriel = (n, fr, frs, en, ens) => (EN ? (n === 1 ? en : ens) : (n > 1 ? frs : fr));
+const roleDe = n => (n ? (EN && n.role_en) || n.role || "" : "");
+document.documentElement.lang = LANGUE;
+
 const TYPES = {
-  dossier: ["Dossier", "gris"], module: ["Module Python", "indigo"], gabarit: ["Gabarit", "sarcelle"],
-  script: ["Script", "orange"], style: ["Style", "orange"], document: ["Document", "gris"], config: ["Configuration", "gris"],
-  ressource: ["Ressource", "gris"], migration: ["Migration", "gris"], classe: ["Classe", "indigo"], modele: ["Modèle", "violet"],
-  vue: ["Vue", "bleu"], route: ["Route", "bleu"], formulaire: ["Formulaire", "ambre"], admin: ["Admin", "ambre"],
-  test: ["Test", "vert"], commande: ["Commande", "rose"], fonction: ["Fonction", "indigo"], methode: ["Méthode", "indigo"],
+  dossier: [t("Dossier", "Folder"), "gris"], module: [t("Module Python", "Python module"), "indigo"],
+  gabarit: [t("Gabarit", "Template"), "sarcelle"], script: ["Script", "orange"], style: ["Style", "orange"],
+  document: ["Document", "gris"], config: ["Configuration", "gris"], ressource: [t("Ressource", "Resource"), "gris"],
+  migration: ["Migration", "gris"], classe: [t("Classe", "Class"), "indigo"], modele: [t("Modèle", "Model"), "violet"],
+  vue: [t("Vue", "View"), "bleu"], route: ["Route", "bleu"], formulaire: [t("Formulaire", "Form"), "ambre"],
+  admin: ["Admin", "ambre"], test: ["Test", "vert"], commande: [t("Commande", "Command"), "rose"],
+  fonction: [t("Fonction", "Function"), "indigo"], methode: [t("Méthode", "Method"), "indigo"],
 };
 const RELATIONS = {
-  sert: ["affiche la vue", "servie par la route", "bleu"], rend: ["affiche le gabarit", "affiché par", "sarcelle"],
-  lien_url: ["mène à la route", "lien depuis", "bleu"], appelle: ["appelle", "appelé par", "indigo"],
-  utilise: ["utilise", "utilisé par", "gris"], relation: ["relation vers", "référencé par", "violet"],
-  herite: ["hérite de", "parent de", "violet"], importe: ["importe", "importé par", "gris"],
-  inclut: ["inclut", "inclus dans", "sarcelle"], etend: ["étend", "étendu par", "sarcelle"],
-  charge: ["charge", "chargé par", "orange"], teste: ["teste", "testé par", "vert"],
+  sert: [t("affiche la vue", "shows the view"), t("servie par la route", "served by route"), "bleu"],
+  rend: [t("affiche le gabarit", "renders template"), t("affiché par", "rendered by"), "sarcelle"],
+  lien_url: [t("mène à la route", "links to route"), t("lien depuis", "linked from"), "bleu"],
+  appelle: [t("appelle", "calls"), t("appelé par", "called by"), "indigo"],
+  utilise: [t("utilise", "uses"), t("utilisé par", "used by"), "gris"],
+  relation: [t("relation vers", "relation to"), t("référencé par", "referenced by"), "violet"],
+  herite: [t("hérite de", "inherits from"), t("parent de", "parent of"), "violet"],
+  importe: [t("importe", "imports"), t("importé par", "imported by"), "gris"],
+  inclut: [t("inclut", "includes"), t("inclus dans", "included in"), "sarcelle"],
+  etend: [t("étend", "extends"), t("étendu par", "extended by"), "sarcelle"],
+  charge: [t("charge", "loads"), t("chargé par", "loaded by"), "orange"],
+  teste: [t("teste", "tests"), t("testé par", "tested by"), "vert"],
 };
 const ORDRE_REL = Object.keys(RELATIONS);
-const SOURCES = { doc: "docstring", commentaire: "commentaire d'en-tête", ecrit: "rôle écrit (roles.json)",
-  claude_md: "tableau de CLAUDE.md", deduit: "déduit du type", vue: "rôle de la vue" };
+const SOURCES = { doc: "docstring", commentaire: t("commentaire d'en-tête", "header comment"),
+  ecrit: t("rôle écrit (roles.json)", "written role (roles.json)"), claude_md: t("tableau de CLAUDE.md", "CLAUDE.md table"),
+  deduit: t("déduit du type", "inferred from the type"), vue: t("rôle de la vue", "role of the view") };
 const ICONE_FLECHE = '<svg width="10" height="10" viewBox="0 0 10 10"><path d="M3 1.5 7 5l-4 3.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>';
 
 // ------------------------------------------------------------------ index
@@ -266,7 +289,7 @@ for (const [s, c, t] of D.liens) {
 const sansAccent = s => (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const champs = D.noeuds.map(n => ({ n, f: {
   nom: sansAccent(n.nom), routes: sansAccent((n.routes || []).join(" ")), nom_url: sansAccent(n.nom_url),
-  chemin: sansAccent(n.chemin), role: sansAccent(n.role), doc: sansAccent(n.doc) } }));
+  chemin: sansAccent(n.chemin), role: sansAccent((n.role || "") + " " + (n.role_en || "")), doc: sansAccent(n.doc) } }));
 const POIDS = [["nom", 10], ["routes", 6], ["nom_url", 6], ["chemin", 4], ["role", 3], ["doc", 1]];
 
 function chercher(requete, limite = 60) {
@@ -339,7 +362,7 @@ function rendreArbre() {
     const x = parId.get(id), fils = enfants.get(id) || [];
     const ouvert = ouverts.has(id);
     let html = `<li class="${ouvert ? "ouvert" : ""}"><div class="ligne${id === choisi ? " choisi" : ""}" style="--n:${n}" data-id="${esc(id)}">`
-      + (fils.length ? `<button class="fleche" data-bascule="${esc(id)}" aria-label="Déplier">${ICONE_FLECHE}</button>` : `<span class="fleche"></span>`)
+      + (fils.length ? `<button class="fleche" data-bascule="${esc(id)}" aria-label="${t("Déplier", "Expand")}">${ICONE_FLECHE}</button>` : `<span class="fleche"></span>`)
       + `<span class="pastille" style="--c:${couleur(x.type)}" title="${esc((TYPES[x.type] || [x.type])[0])}"></span>`
       + `<span class="nom${x.type === "route" ? " mono" : ""}">${esc(x.nom)}</span>`
       + (fils.length && x.type === "dossier" ? `<span class="compte">${fils.length}</span>` : "") + `</div>`;
@@ -352,8 +375,8 @@ function rendreArbre() {
 function rendreRoutes(filtre = "") {
   const routes = D.noeuds.filter(n => n.type === "route").sort((a, b) => a.nom.localeCompare(b.nom));
   const f = sansAccent(filtre);
-  const liste = routes.filter(r => !f || sansAccent(r.nom + " " + (r.nom_url || "") + " " + (r.vue_texte || "") + " " + (r.role || "")).includes(f));
-  panneau.innerHTML = `<input class="filtre" id="filtre-routes" placeholder="Filtrer ${routes.length} routes…" value="${esc(filtre)}">`
+  const liste = routes.filter(r => !f || sansAccent(r.nom + " " + (r.nom_url || "") + " " + (r.vue_texte || "") + " " + roleDe(r)).includes(f));
+  panneau.innerHTML = `<input class="filtre" id="filtre-routes" placeholder="${t(`Filtrer ${routes.length} routes…`, `Filter ${routes.length} routes…`)}" value="${esc(filtre)}">`
     + `<ul class="arbre liste-routes">${liste.map(r => `<li><div class="ligne${r.id === choisi ? " choisi" : ""}" data-id="${esc(r.id)}"><div class="r">${esc(r.nom)}</div><div class="v">${esc(r.nom_url || "")}${r.nom_url && r.vue_texte ? " · " : ""}${esc(r.vue_texte || "")}</div></div></li>`).join("")}</ul>`;
   const champ = document.getElementById("filtre-routes");
   champ.addEventListener("input", () => { const pos = champ.selectionStart; rendreRoutes(champ.value); const c = document.getElementById("filtre-routes"); c.focus(); c.setSelectionRange(pos, pos); });
@@ -387,12 +410,15 @@ const contenu = document.getElementById("contenu");
 // ------------------------------------------------------------------ serveur local : lecture, recherche dans le code, modification
 const SERVEUR = JSON.parse(document.getElementById("serveur").textContent);
 const TYPES_TEXTE = ["module", "migration", "gabarit", "script", "style", "document", "config"];
-const SANS_SERVEUR = `<div class="note">Pour chercher dans les lignes de code et modifier un fichier depuis cette page, ouvrez-la par le serveur local :
-  <code>python3 …/analyser.py . --serveur</code> (ou demandez à Claude « ouvre la carte du projet »).</div>`;
+const SANS_SERVEUR = `<div class="note">${t("Pour chercher dans les lignes de code et modifier un fichier depuis cette page, ouvrez-la par le serveur local :",
+  "To search lines of code and edit a file from this page, open it through the local server:")}
+  <code>python3 …/analyser.py . --serveur</code> ${t("(ou demandez à Claude « ouvre la carte du projet »).", "(or ask Claude to “open the project map”).")}</div>`;
 async function api(chemin, options = {}) {
   const r = await fetch(chemin, { ...options, headers: { "X-Jeton": SERVEUR.jeton, "Content-Type": "application/json", ...(options.headers || {}) } });
-  const donnees = await r.json().catch(() => ({ erreur: "Réponse illisible du serveur." }));
-  if (!r.ok && !donnees.erreur) donnees.erreur = `Erreur ${r.status}`;
+  const donnees = await r.json().catch(() => ({ erreur: t("Réponse illisible du serveur.", "Unreadable server response.") }));
+  if (EN && donnees.error) donnees.erreur = donnees.error;
+  if (EN && donnees.recalcul_en) donnees.recalcul = donnees.recalcul_en;
+  if (!r.ok && !donnees.erreur) donnees.erreur = `${t("Erreur", "Error")} ${r.status}`;
   return donnees;
 }
 const fichierTexte = id => { const n = parId.get(id); return n && TYPES_TEXTE.includes(n.type); };
@@ -406,9 +432,9 @@ let edition = null; // { chemin, modifie } tant qu'un éditeur est ouvert
    l'éditeur sur tout le fichier, à cette ligne. Double-clic sur une ligne : l'éditeur s'ouvre à cette ligne. */
 async function montrerCode(zone, chemin, { cible = null, debut = null, fin = null, extrait = false } = {}) {
   if (!SERVEUR) { zone.innerHTML = SANS_SERVEUR; return; }
-  zone.innerHTML = `<p class="aide">Lecture de ${esc(chemin)}…</p>`;
+  zone.innerHTML = `<p class="aide">${t("Lecture de", "Reading")} ${esc(chemin)}…</p>`;
   const f = await api("/api/fichier?chemin=" + encodeURIComponent(chemin));
-  if (f.erreur) { zone.innerHTML = `<div class="note erreur">${esc(f.erreur)} <a href="${lienVSCode(chemin, cible)}">Ouvrir dans VS Code</a></div>`; return; }
+  if (f.erreur) { zone.innerHTML = `<div class="note erreur">${esc(f.erreur)} <a href="${lienVSCode(chemin, cible)}">${t("Ouvrir dans VS Code", "Open in VS Code")}</a></div>`; return; }
   const lignes = f.contenu.split("\n");
   if (lignes.length > 1 && lignes[lignes.length - 1] === "") lignes.pop();
   const partiel = extrait && debut != null && fin != null && !(debut <= 1 && fin >= lignes.length);
@@ -417,9 +443,9 @@ async function montrerCode(zone, chemin, { cible = null, debut = null, fin = nul
   for (let i = a; i <= b; i++) {
     html += `<div class="l${i === cible ? " cible" : ""}${partiel ? "" : (debut && i >= debut && i <= fin ? " zone" : "")}" data-ligne="${i}"><span class="n">${i}</span><span class="t">${esc(lignes[i - 1]) || " "}</span></div>`;
   }
-  zone.innerHTML = `<div class="bloc-code"><div class="code-barre"><code>${esc(chemin)}</code><span>${partiel ? `lignes ${a}–${b} sur ${lignes.length}` : `${lignes.length} lignes`}</span>
-      <span class="espace"></span>${partiel ? `<button class="bouton" data-action="tout">Tout le fichier</button>` : ""}
-      <a class="bouton" href="${lienVSCode(chemin, cible || a)}">VS Code</a><button class="bouton principal" data-action="modifier">Modifier</button></div>
+  zone.innerHTML = `<div class="bloc-code"><div class="code-barre"><code>${esc(chemin)}</code><span>${partiel ? t(`lignes ${a}–${b} sur ${lignes.length}`, `lines ${a}–${b} of ${lignes.length}`) : t(`${lignes.length} lignes`, `${lignes.length} lines`)}</span>
+      <span class="espace"></span>${partiel ? `<button class="bouton" data-action="tout">${t("Tout le fichier", "Whole file")}</button>` : ""}
+      <a class="bouton" href="${lienVSCode(chemin, cible || a)}">VS Code</a><button class="bouton principal" data-action="modifier">${t("Modifier", "Edit")}</button></div>
     <div class="code">${html}</div></div>`;
   const code = zone.querySelector(".code");
   const ligneCible = code.querySelector(".cible") || (debut && !partiel ? code.querySelector(`[data-ligne="${debut}"]`) : null);
@@ -432,8 +458,8 @@ async function montrerCode(zone, chemin, { cible = null, debut = null, fin = nul
 
 function editer(zone, chemin, f, ligne, retour) {
   let empreinte = f.empreinte;
-  zone.innerHTML = `<div class="bloc-code"><div class="code-barre"><code>${esc(chemin)}</code><span id="ed-etat">non modifié</span><span class="espace"></span>
-      <button class="bouton" data-action="annuler">Fermer</button><button class="bouton principal" data-action="enregistrer" disabled>Enregistrer <kbd>⌘S</kbd></button></div>
+  zone.innerHTML = `<div class="bloc-code"><div class="code-barre"><code>${esc(chemin)}</code><span id="ed-etat">${t("non modifié", "unchanged")}</span><span class="espace"></span>
+      <button class="bouton" data-action="annuler">${t("Fermer", "Close")}</button><button class="bouton principal" data-action="enregistrer" disabled>${t("Enregistrer", "Save")} <kbd>⌘S</kbd></button></div>
     <div class="editeur"><pre class="gouttiere"></pre><textarea spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off"></textarea></div>
     <div class="etat-edition"><span id="ed-pos"></span><span id="ed-message"></span></div></div>`;
   const ta = zone.querySelector("textarea"), gouttiere = zone.querySelector(".gouttiere");
@@ -441,7 +467,7 @@ function editer(zone, chemin, f, ligne, retour) {
   ta.value = f.contenu;
   edition = { chemin, modifie: false };
   const numeros = () => { const k = ta.value.split("\n").length; let s = ""; for (let i = 1; i <= k; i++) s += i + "\n"; gouttiere.textContent = s; };
-  const position = () => { const avant = ta.value.slice(0, ta.selectionStart).split("\n"); pos.textContent = `ligne ${avant.length}, colonne ${avant[avant.length - 1].length + 1}`; };
+  const position = () => { const avant = ta.value.slice(0, ta.selectionStart).split("\n"); pos.textContent = t(`ligne ${avant.length}, colonne ${avant[avant.length - 1].length + 1}`, `line ${avant.length}, column ${avant[avant.length - 1].length + 1}`); };
   numeros();
   // place le curseur sur la ligne visée et la sélectionne
   const lignes = ta.value.split("\n"); let debutLigne = 0;
@@ -449,23 +475,23 @@ function editer(zone, chemin, f, ligne, retour) {
   ta.focus(); ta.setSelectionRange(debutLigne, debutLigne + (lignes[ligne - 1] || "").length);
   ta.scrollTop = Math.max(0, (ligne - 8) * 20); gouttiere.scrollTop = ta.scrollTop; position();
   ta.addEventListener("scroll", () => { gouttiere.scrollTop = ta.scrollTop; });
-  ta.addEventListener("input", () => { edition.modifie = ta.value !== f.contenu; bouton.disabled = !edition.modifie; etat.textContent = edition.modifie ? "modifié, non enregistré" : "non modifié"; numeros(); position(); });
+  ta.addEventListener("input", () => { edition.modifie = ta.value !== f.contenu; bouton.disabled = !edition.modifie; etat.textContent = edition.modifie ? t("modifié, non enregistré", "modified, not saved") : t("non modifié", "unchanged"); numeros(); position(); });
   ta.addEventListener("keyup", position); ta.addEventListener("click", position);
   ta.addEventListener("keydown", e => {
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "s") { e.preventDefault(); if (!bouton.disabled) enregistrer(); }
     else if (e.key === "Tab" && !e.shiftKey) { e.preventDefault(); const s = ta.selectionStart; ta.setRangeText("    ", s, ta.selectionEnd, "end"); ta.dispatchEvent(new Event("input")); }
   });
   async function enregistrer() {
-    bouton.disabled = true; message.textContent = "Enregistrement…";
+    bouton.disabled = true; message.textContent = t("Enregistrement…", "Saving…");
     const r = await api("/api/fichier", { method: "POST", body: JSON.stringify({ chemin, contenu: ta.value, empreinte }) });
     if (r.erreur) { message.innerHTML = `<span style="color:var(--t-rose)">${esc(r.erreur)}</span>`; bouton.disabled = false; return; }
     empreinte = r.empreinte; f.contenu = ta.value; f.empreinte = r.empreinte; edition.modifie = false;
-    etat.textContent = "enregistré"; message.innerHTML = r.recalcul ? esc(r.recalcul) : `Enregistré, carte recalculée. <a href="#" id="ed-recharger">Recharger la page</a> pour voir les nouveaux liens.`;
+    etat.textContent = t("enregistré", "saved"); message.innerHTML = r.recalcul ? esc(r.recalcul) : t(`Enregistré, carte recalculée. <a href="#" id="ed-recharger">Recharger la page</a> pour voir les nouveaux liens.`, `Saved, map recomputed. <a href="#" id="ed-recharger">Reload the page</a> to see the new links.`);
     zone.querySelector("#ed-recharger")?.addEventListener("click", e => { e.preventDefault(); location.reload(); });
   }
   bouton.addEventListener("click", enregistrer);
   zone.querySelector('[data-action="annuler"]').addEventListener("click", () => {
-    if (edition?.modifie && !confirm("Fermer sans enregistrer les modifications ?")) return;
+    if (edition?.modifie && !confirm(t("Fermer sans enregistrer les modifications ?", "Close without saving your changes?"))) return;
     edition = null; const avant = ta.selectionStart, n = ta.value.slice(0, avant).split("\n").length;
     montrerCode(zone, chemin, { ...retour, cible: n });
   });
@@ -478,11 +504,11 @@ function rendreFichier(valeur) {
   let symbole = null;
   if (ligne) for (const e of descendants(chemin)) { const x = parId.get(e); if (x.ligne && x.fin && x.ligne <= ligne && ligne <= x.fin && (!symbole || x.ligne >= symbole.ligne)) symbole = x; }
   contenu.innerHTML = `<div class="fil">${ancetres(chemin).map(a => `<a href="${lien(a)}">${esc(parId.get(a)?.nom || a)}</a>`).join(" / ")}</div>
-    <h2>${esc(n ? n.nom : chemin)}${ligne ? ` <span class="badge" style="--c:var(--t-gris)">ligne ${ligne}</span>` : ""} ${n ? badge(n.type) : ""}</h2>
-    <div class="emplacement">${n ? `<a href="${lien(chemin)}">Fiche du fichier</a>` : ""}${symbole ? `<span>dans <a href="${lien(symbole.id)}">${esc(libelle(symbole))}</a> ${badge(symbole.type)}</span>` : ""}</div>
-    <p class="role">${esc(symbole?.role || n?.role || "")}</p><div id="zone-code"></div>`;
+    <h2>${esc(n ? n.nom : chemin)}${ligne ? ` <span class="badge" style="--c:var(--t-gris)">${t("ligne", "line")} ${ligne}</span>` : ""} ${n ? badge(n.type) : ""}</h2>
+    <div class="emplacement">${n ? `<a href="${lien(chemin)}">${t("Fiche du fichier", "File card")}</a>` : ""}${symbole ? `<span>${t("dans", "in")} <a href="${lien(symbole.id)}">${esc(libelle(symbole))}</a> ${badge(symbole.type)}</span>` : ""}</div>
+    <p class="role">${esc(roleDe(symbole) || roleDe(n))}</p><div id="zone-code"></div>`;
   montrerCode(document.getElementById("zone-code"), chemin, { cible: ligne, debut: symbole?.ligne, fin: symbole?.fin });
-  document.title = `${chemin}${ligne ? ":" + ligne : ""} — Carte ${D.projet}`;
+  document.title = `${chemin}${ligne ? ":" + ligne : ""} — ${t("Carte", "Map")} ${D.projet}`;
 }
 
 // ------------------------------------------------------------------ plan relié : arborescence détaillée avec les liens entre ses lignes
@@ -525,7 +551,7 @@ function rendrePlan(zone) {
     const ya = rang.get(f.a) * HL + HL / 2, yb = rang.get(f.b) * HL + HL / 2;
     const bombe = Math.min(largArcs - 30, 18 + Math.abs(yb - ya) * 0.38);
     const dominant = [...f.types.entries()].sort((x, y) => y[1] - x[1])[0][0];
-    const titre = `${parId.get(f.a).nom} → ${parId.get(f.b).nom} : ${f.n} lien${f.n > 1 ? "s" : ""} (${[...f.types].map(([t, k]) => RELATIONS[t][0] + " " + k).join(", ")})`;
+    const titre = `${parId.get(f.a).nom} → ${parId.get(f.b).nom} : ${f.n} ${pluriel(f.n, "lien", "liens", "link", "links")} (${[...f.types].map(([t, k]) => RELATIONS[t][0] + " " + k).join(", ")})`;
     const sortant = f.a === choisi;
     const couleurArc = choisi ? (sortant ? couleurRel(dominant) : couleurRel(dominant)) : "var(--texte-2)";
     const epais = choisi ? 1.2 + 3.5 * Math.log1p(f.n) / Math.log1p(maxN) : 0.6 + 2 * f.n / maxN;
@@ -536,20 +562,20 @@ function rendrePlan(zone) {
   const html = lignes.map(([id, n]) => {
     const x = parId.get(id), fils = (enfants.get(id) || []).length, ouvert = plan.ouverts.has(id);
     return `<div class="pl-ligne${id === choisi ? " choisi" : ""}${relies.has(id) ? " relie" : ""}" data-id="${esc(id)}" style="--n:${n}"><span class="pl-etiquette">`
-      + (fils ? `<button class="fleche" data-pl-bascule aria-label="Déplier" style="${ouvert ? "transform:rotate(90deg)" : ""}">${ICONE_FLECHE}</button>` : `<span class="fleche"></span>`)
+      + (fils ? `<button class="fleche" data-pl-bascule aria-label="${t("Déplier", "Expand")}" style="${ouvert ? "transform:rotate(90deg)" : ""}">${ICONE_FLECHE}</button>` : `<span class="fleche"></span>`)
       + `<span class="pastille" style="--c:${couleur(x.type)}" title="${esc((TYPES[x.type] || [x.type])[0])}"></span>`
       + `<span class="nom${x.type === "route" ? " mono" : ""}">${esc(x.nom)}${x.type === "dossier" ? "/" : ""}</span>`
-      + `<span class="role-court" title="${esc(x.role || "")}">${esc(x.role || "")}</span></span>`
-      + `<a class="fiche" href="${lien(id)}" title="Ouvrir la fiche">↗</a>`
-      + `<span class="nb" title="liens visibles">${compte.get(id) || ""}</span></div>`;
+      + `<span class="role-court" title="${esc(roleDe(x))}">${esc(roleDe(x))}</span></span>`
+      + `<a class="fiche" href="${lien(id)}" title="${t("Ouvrir la fiche", "Open the card")}">↗</a>`
+      + `<span class="nb" title="${t("liens visibles", "visible links")}">${compte.get(id) || ""}</span></div>`;
   }).join("");
   const presentes = ORDRE_REL.filter(r => D.liens.some(l => l[2] === r));
   zone.innerHTML = `<div class="plan-outils">
-      <button class="bouton" data-pl="dossiers">Déplier les dossiers</button><button class="bouton" data-pl="fichiers">Déplier jusqu'aux fonctions</button><button class="bouton" data-pl="replier">Tout replier</button>
+      <button class="bouton" data-pl="dossiers">${t("Déplier les dossiers", "Expand folders")}</button><button class="bouton" data-pl="fichiers">${t("Déplier jusqu'aux fonctions", "Expand to functions")}</button><button class="bouton" data-pl="replier">${t("Tout replier", "Collapse all")}</button>
       <span class="rels">${presentes.map(r => `<label><input type="checkbox" data-rel="${r}" ${plan.rels.has(r) ? "checked" : ""}><i class="trait" style="--c:${couleurRel(r)}"></i>${esc(RELATIONS[r][0])}</label>`).join("")}</span></div>
     <div class="plan${choisi ? " selection" : ""}" style="--larg:${larg}px"><div class="plan-interieur">${html}
       <svg class="arcs" style="left:${larg}px" width="${largArcs}" height="${lignes.length * HL}"><defs><marker id="fleche" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0 L8,4 L0,8z" fill="var(--texte-2)"/></marker></defs>${arcs}</svg></div></div>
-    <div class="plan-detail">${choisi ? detailPlan(choisi, flux) : `<p class="aide">Cliquez sur une ligne pour voir ses liens (trait plein : sortants, pointillé : entrants) ; la flèche ▸ déplie ; ↗ ouvre la fiche. Les liens d'un élément replié sont reportés sur son dossier ou son fichier.</p>`}</div>`;
+    <div class="plan-detail">${choisi ? detailPlan(choisi, flux) : `<p class="aide">${t("Cliquez sur une ligne pour voir ses liens (trait plein : sortants, pointillé : entrants) ; la flèche ▸ déplie ; ↗ ouvre la fiche. Les liens d'un élément replié sont reportés sur son dossier ou son fichier.", "Click a row to see its links (solid: outgoing, dashed: incoming); the ▸ arrow expands; ↗ opens the card. Links of a collapsed element are shown on its folder or file.")}</p>`}</div>`;
   zone.onclick = e => {
     const bouton = e.target.closest("[data-pl]");
     if (bouton) {
@@ -578,9 +604,9 @@ function detailPlan(id, flux) {
   for (const f of flux.values()) { if (f.a === id) sort.push(f); if (f.b === id) entre.push(f); }
   const bloc = (titre, liste, cle) => `<div class="groupe carte"><h4>${titre} <span class="n">${liste.reduce((s, f) => s + f.n, 0)}</span></h4><ul>${liste.sort((a, b) => b.n - a.n).map(f => {
     const x = parId.get(f[cle]);
-    return `<li><span class="pastille" style="--c:${couleur(x.type)}"></span><a href="#" data-pl-aller="${esc(x.id)}" onclick="return false">${esc(x.nom)}</a><span class="ou">${f.n} · ${[...f.types.keys()].map(t => esc(RELATIONS[t][cle === "b" ? 0 : 1])).join(", ")}</span></li>`; }).join("") || `<li class="aide">aucun</li>`}</ul></div>`;
-  return `<div class="carte" style="margin-bottom:10px"><strong>${esc(n.nom)}</strong> ${badge(n.type)} <a href="${lien(id)}">fiche</a>${fichierTexte(fichierDe(n)) ? ` · <a href="${lienFichier(fichierDe(n), n.ligne)}">code</a>` : ""}<div class="aide">${esc(n.role || "")}</div></div>
-    <div class="groupes">${bloc("Liens sortants vers", sort, "b")}${bloc("Liens entrants depuis", entre, "a")}</div>`;
+    return `<li><span class="pastille" style="--c:${couleur(x.type)}"></span><a href="#" data-pl-aller="${esc(x.id)}" onclick="return false">${esc(x.nom)}</a><span class="ou">${f.n} · ${[...f.types.keys()].map(t => esc(RELATIONS[t][cle === "b" ? 0 : 1])).join(", ")}</span></li>`; }).join("") || `<li class="aide">${t("aucun", "none")}</li>`}</ul></div>`;
+  return `<div class="carte" style="margin-bottom:10px"><strong>${esc(n.nom)}</strong> ${badge(n.type)} <a href="${lien(id)}">${t("fiche", "card")}</a>${fichierTexte(fichierDe(n)) ? ` · <a href="${lienFichier(fichierDe(n), n.ligne)}">code</a>` : ""}<div class="aide">${esc(roleDe(n))}</div></div>
+    <div class="groupes">${bloc(t("Liens sortants vers", "Outgoing links to"), sort, "b")}${bloc(t("Liens entrants depuis", "Incoming links from"), entre, "a")}</div>`;
 }
 
 function liensDe(id, avecContenu) {
@@ -615,13 +641,13 @@ function graphe(id, sort, entre) {
   d.forEach(([x, t], i) => { const y = yDe(i, kd) + H / 2; svg += `<path d="M${cx + L / 2},${cy} C${cx + 220},${cy} ${cx + 150},${y} ${largeur - 10 - L},${y}" stroke="${couleurRel(t)}"><title>${esc(RELATIONS[t][0])}</title></path>`; });
   g.forEach(([x], i) => { svg += boite(10, yDe(i, kg), parId.get(x)); });
   d.forEach(([x], i) => { svg += boite(largeur - 10 - L, yDe(i, kd), parId.get(x)); });
-  if (gauche.length > MAX) svg += `<text class="plus" x="${10 + L / 2}" y="${yDe(MAX, kg) + H / 2}" text-anchor="middle">+ ${gauche.length - MAX} autres</text>`;
-  if (droite.length > MAX) svg += `<text class="plus" x="${largeur - 10 - L / 2}" y="${yDe(MAX, kd) + H / 2}" text-anchor="middle">+ ${droite.length - MAX} autres</text>`;
+  if (gauche.length > MAX) svg += `<text class="plus" x="${10 + L / 2}" y="${yDe(MAX, kg) + H / 2}" text-anchor="middle">+ ${gauche.length - MAX} ${t("autres", "more")}</text>`;
+  if (droite.length > MAX) svg += `<text class="plus" x="${largeur - 10 - L / 2}" y="${yDe(MAX, kd) + H / 2}" text-anchor="middle">+ ${droite.length - MAX} ${t("autres", "more")}</text>`;
   svg += boite(cx - L / 2, cy - H / 2, parId.get(id), true);
-  if (!gauche.length) svg += `<text class="plus" x="${10 + L / 2}" y="${cy + 4}" text-anchor="middle">aucun lien entrant</text>`;
-  if (!droite.length) svg += `<text class="plus" x="${largeur - 10 - L / 2}" y="${cy + 4}" text-anchor="middle">aucun lien sortant</text>`;
+  if (!gauche.length) svg += `<text class="plus" x="${10 + L / 2}" y="${cy + 4}" text-anchor="middle">${t("aucun lien entrant", "no incoming link")}</text>`;
+  if (!droite.length) svg += `<text class="plus" x="${largeur - 10 - L / 2}" y="${cy + 4}" text-anchor="middle">${t("aucun lien sortant", "no outgoing link")}</text>`;
   const presentes = ORDRE_REL.filter(t => sort.has(t) || entre.has(t));
-  return `<div class="legende"><span>← entrants</span>${presentes.map(t => `<span><i class="trait" style="--c:${couleurRel(t)}"></i>${esc(RELATIONS[t][0])}</span>`).join("")}<span>sortants →</span></div>`
+  return `<div class="legende"><span>← ${t("entrants", "incoming")}</span>${presentes.map(t => `<span><i class="trait" style="--c:${couleurRel(t)}"></i>${esc(RELATIONS[t][0])}</span>`).join("")}<span>${t("sortants", "outgoing")} →</span></div>`
     + `<div class="graphe"><svg viewBox="0 0 ${largeur} ${hauteur}" width="${largeur}" height="${hauteur}">${svg}</svg></div>`;
 }
 
@@ -631,16 +657,16 @@ function groupes(sort, entre) {
     const ids = [...(m.get(t) || [])]; if (!ids.length) continue;
     ids.sort((a, b) => libelle(parId.get(a)).localeCompare(libelle(parId.get(b))));
     blocs.push(`<div class="groupe carte"><h4><i class="trait" style="--c:${couleurRel(t)}"></i>${esc(RELATIONS[t][sens])} <span class="n">${ids.length}</span></h4><ul>`
-      + ids.map(x => { const n = parId.get(x); return `<li><span class="pastille" style="--c:${couleur(n.type)}" title="${esc((TYPES[n.type] || [n.type])[0])}"></span><a href="${lien(x)}" title="${esc(n.role || "")}">${esc(n.type === "route" ? n.nom : libelle(n))}</a><span class="ou">${esc(n.type === "route" ? n.nom_url || "" : emplacement(n))}</span></li>`; }).join("")
+      + ids.map(x => { const n = parId.get(x); return `<li><span class="pastille" style="--c:${couleur(n.type)}" title="${esc((TYPES[n.type] || [n.type])[0])}"></span><a href="${lien(x)}" title="${esc(roleDe(n))}">${esc(n.type === "route" ? n.nom : libelle(n))}</a><span class="ou">${esc(n.type === "route" ? n.nom_url || "" : emplacement(n))}</span></li>`; }).join("")
       + `</ul></div>`);
   }
-  return blocs.length ? `<div class="groupes">${blocs.join("")}</div>` : `<p class="aide">Aucune interaction détectée.</p>`;
+  return blocs.length ? `<div class="groupes">${blocs.join("")}</div>` : `<p class="aide">${t("Aucune interaction détectée.", "No interaction detected.")}</p>`;
 }
 
 let avecContenu = true;
 function rendreNoeud(id) {
   const n = parId.get(id);
-  if (!n) { contenu.innerHTML = `<p class="aide">Élément introuvable.</p>`; return; }
+  if (!n) { contenu.innerHTML = `<p class="aide">${t("Élément introuvable.", "Element not found.")}</p>`; return; }
   choisi = id;
   for (const a of ancetres(id)) ouverts.add(a);
   if (onglet === "arbre") rendreArbre(); else if (onglet === "routes") rendreRoutes(document.getElementById("filtre-routes")?.value || "");
@@ -648,47 +674,47 @@ function rendreNoeud(id) {
   const regroupable = ["module", "gabarit", "classe", "modele", "vue", "formulaire", "admin", "test", "commande", "script", "style"].includes(n.type) && fils.length;
   const { sort, entre } = liensDe(id, regroupable && avecContenu);
   const fil = ancetres(id).map(a => `<a href="${lien(a)}">${esc(parId.get(a).nom)}</a>`).join(" / ");
-  const ouvrir = n.chemin && D.racine ? `<a href="${lienVSCode(n.chemin, n.ligne)}">Ouvrir dans VS Code</a>${fichierTexte(fichierDe(n)) && n.type !== "route" ? ` <a href="${lienFichier(fichierDe(n), n.ligne)}">Voir dans le fichier</a>` : ""}` : "";
+  const ouvrir = n.chemin && D.racine ? `<a href="${lienVSCode(n.chemin, n.ligne)}">${t("Ouvrir dans VS Code", "Open in VS Code")}</a>${fichierTexte(fichierDe(n)) && n.type !== "route" ? ` <a href="${lienFichier(fichierDe(n), n.ligne)}">${t("Voir dans le fichier", "View in file")}</a>` : ""}` : "";
   const routes = (n.routes || []).length ? `<div class="routes-vue">${[...entre.get("sert") || []].map(r => `<a href="${lien(r)}">${esc(parId.get(r).nom)}</a>`).join("")}</div>` : "";
-  const infosRoute = n.type === "route" ? `<p class="emplacement">${n.nom_url ? `<span>nom d'URL : <code>${esc(n.nom_url)}</code></span>` : ""}<span>vue : <code>${esc(n.vue_texte || "")}</code></span></p>` : "";
+  const infosRoute = n.type === "route" ? `<p class="emplacement">${n.nom_url ? `<span>${t("nom d'URL :", "URL name:")} <code>${esc(n.nom_url)}</code></span>` : ""}<span>${t("vue :", "view:")} <code>${esc(n.vue_texte || "")}</code></span></p>` : "";
   contenu.innerHTML = `
     <div class="fil">${fil}</div>
     <h2>${esc(n.type === "route" ? n.nom : libelle(n))} ${badge(n.type)}</h2>
-    <div class="emplacement"><code>${esc(emplacement(n) || "(racine)")}</code>${ouvrir}</div>
+    <div class="emplacement"><code>${esc(emplacement(n) || t("(racine)", "(root)"))}</code>${ouvrir}</div>
     ${infosRoute}
-    <p class="role${n.role ? "" : " vide"}">${esc(n.role || "Rôle non décrit : ajoutez une docstring, un commentaire d'en-tête, ou une entrée dans .carte-projet/roles.json.")}</p>
-    ${n.role ? `<div class="source">Source du rôle : ${esc(SOURCES[n.source] || n.source || "")}</div>` : ""}
+    <p class="role${n.role ? "" : " vide"}">${esc(roleDe(n) || t("Rôle non décrit : ajoutez une docstring, un commentaire d'en-tête, ou une entrée dans .carte-projet/roles.json.", "No role described: add a docstring, a header comment, or an entry in .carte-projet/roles.json."))}</p>
+    ${n.role ? `<div class="source">${t("Source du rôle :", "Role source:")} ${esc(SOURCES[n.source] || n.source || "")}</div>` : ""}
     ${routes}
     ${n.id.includes("::") && fichierTexte(n.chemin) ? `<h3>Code</h3><div id="zone-code"></div>` : ""}
-    <h3>Interactions ${regroupable ? `<label class="bascule"><input type="checkbox" id="avec-contenu" ${avecContenu ? "checked" : ""}> inclure son contenu (${fils.length})</label>` : ""}</h3>
+    <h3>Interactions ${regroupable ? `<label class="bascule"><input type="checkbox" id="avec-contenu" ${avecContenu ? "checked" : ""}> ${t("inclure son contenu", "include its contents")} (${fils.length})</label>` : ""}</h3>
     ${graphe(id, sort, entre)}
     ${groupes(sort, entre)}
-    ${fils.length ? `<h3>Contenu (${fils.length})</h3><div class="groupe carte"><ul style="max-height:420px">${fils.map(f => { const x = parId.get(f); return `<li><span class="pastille" style="--c:${couleur(x.type)}"></span><a href="${lien(f)}">${esc(x.type === "route" ? x.nom : libelle(x))}</a><span class="ou">${esc(x.role || "")}</span></li>`; }).join("")}</ul></div>` : ""}
+    ${fils.length ? `<h3>${t("Contenu", "Contents")} (${fils.length})</h3><div class="groupe carte"><ul style="max-height:420px">${fils.map(f => { const x = parId.get(f); return `<li><span class="pastille" style="--c:${couleur(x.type)}"></span><a href="${lien(f)}">${esc(x.type === "route" ? x.nom : libelle(x))}</a><span class="ou">${esc(roleDe(x))}</span></li>`; }).join("")}</ul></div>` : ""}
     ${n.doc && n.doc.length > (n.role || "").length + 5 ? `<h3>Documentation</h3><div class="carte"><pre class="doc">${esc(n.doc)}</pre></div>` : ""}
-    ${!n.id.includes("::") && fichierTexte(n.id) ? `<h3>Code du fichier</h3><div id="zone-code"></div>` : ""}`;
+    ${!n.id.includes("::") && fichierTexte(n.id) ? `<h3>${t("Code du fichier", "File code")}</h3><div id="zone-code"></div>` : ""}`;
   contenu.querySelector("#avec-contenu")?.addEventListener("change", e => { avecContenu = e.target.checked; rendreNoeud(id); });
   const zoneCode = document.getElementById("zone-code");
   if (zoneCode) montrerCode(zoneCode, fichierDe(n), n.id.includes("::") ? { cible: n.ligne, debut: n.ligne, fin: n.fin || n.ligne, extrait: true } : {});
   contenu.scrollTop = 0;
-  document.title = `${n.nom} — Carte ${D.projet}`;
+  document.title = `${n.nom} — ${t("Carte", "Map")} ${D.projet}`;
 }
 
 function rendreRecherche(requete) {
   const res = chercher(requete), mots = sansAccent(requete).split(/\s+/).filter(Boolean);
-  contenu.innerHTML = `<h2>« ${esc(requete)} »</h2>
-    <p class="aide">Entrée ouvre le résultat choisi ; ↑ ↓ pour choisir. Éléments : nom, route, chemin, rôle et documentation. Lignes de code : le texte exact, dans tous les fichiers texte.</p>
-    <h3>Lignes de code <span id="nb-code"></span><span class="options-code"><label><input type="checkbox" id="opt-casse" ${optionsCode.casse ? "checked" : ""}> respecter la casse</label><label><input type="checkbox" id="opt-regex" ${optionsCode.regex ? "checked" : ""}> expression régulière</label></span></h3>
-    <div id="res-code">${SERVEUR ? `<p class="aide">Recherche…</p>` : SANS_SERVEUR}</div>
-    <h3>Éléments <span class="badge" style="--c:var(--t-gris)">${res.length === 60 ? "60+" : res.length}</span></h3>
+  contenu.innerHTML = `<h2>${t(`« ${esc(requete)} »`, `“${esc(requete)}”`)}</h2>
+    <p class="aide">${t("Entrée ouvre le résultat choisi ; ↑ ↓ pour choisir. Éléments : nom, route, chemin, rôle et documentation. Lignes de code : le texte exact, dans tous les fichiers texte.", "Enter opens the selected result; ↑ ↓ to choose. Elements: name, route, path, role and documentation. Lines of code: the exact text, in every text file.")}</p>
+    <h3>${t("Lignes de code", "Lines of code")} <span id="nb-code"></span><span class="options-code"><label><input type="checkbox" id="opt-casse" ${optionsCode.casse ? "checked" : ""}> ${t("respecter la casse", "match case")}</label><label><input type="checkbox" id="opt-regex" ${optionsCode.regex ? "checked" : ""}> ${t("expression régulière", "regular expression")}</label></span></h3>
+    <div id="res-code">${SERVEUR ? `<p class="aide">${t("Recherche…", "Searching…")}</p>` : SANS_SERVEUR}</div>
+    <h3>${t("Éléments", "Elements")} <span class="badge" style="--c:var(--t-gris)">${res.length === 60 ? "60+" : res.length}</span></h3>
     <ul class="resultats">${res.map((n, i) => {
       const s = (sortants.get(n.id) || []).length, e = (entrants.get(n.id) || []).length;
-      const routes = (n.routes || []).length ? ` · routes ${n.routes.map(r => surligner(r, mots)).join(", ")}` : "";
+      const routes = (n.routes || []).length ? ` · ${t("routes", "routes")} ${n.routes.map(r => surligner(r, mots)).join(", ")}` : "";
       return `<li data-id="${esc(n.id)}" class="${i === 0 ? "actif" : ""}"><div class="titre">${badge(n.type)}<span>${surligner(n.type === "route" ? n.nom : libelle(n), mots)}</span></div>
         <div class="chemin mono">${surligner(emplacement(n), mots)}${n.nom_url ? " · " + surligner(n.nom_url, mots) : ""}${routes}</div>
-        ${n.role ? `<div class="extrait">${surligner(n.role, mots)}</div>` : ""}
-        <div class="liens-courts">${s} lien${s > 1 ? "s" : ""} sortant${s > 1 ? "s" : ""} · ${e} entrant${e > 1 ? "s" : ""}</div></li>`;
-    }).join("")}</ul>${res.length ? "" : `<p class="aide">Aucun élément ne correspond. Essayez un mot plus court, ou sans accent.</p>`}`;
-  document.title = `${requete} — Carte ${D.projet}`;
+        ${n.role ? `<div class="extrait">${surligner(roleDe(n), mots)}</div>` : ""}
+        <div class="liens-courts">${s} ${pluriel(s, "lien sortant", "liens sortants", "outgoing link", "outgoing links")} · ${e} ${pluriel(e, "entrant", "entrants", "incoming", "incoming")}</div></li>`;
+    }).join("")}</ul>${res.length ? "" : `<p class="aide">${t("Aucun élément ne correspond. Essayez un mot plus court, ou sans accent.", "No element matches. Try a shorter word.")}</p>`}`;
+  document.title = `${requete} — ${t("Carte", "Map")} ${D.projet}`;
   for (const [cle, champ] of [["casse", "opt-casse"], ["regex", "opt-regex"]])
     document.getElementById(champ).addEventListener("change", e => { optionsCode[cle] = e.target.checked; chercherCode(requete); });
   chercherCode(requete);
@@ -704,7 +730,7 @@ async function chercherCode(requete) {
   if (r.erreur) { zone.innerHTML = `<div class="note erreur">${esc(r.erreur)}</div>`; return; }
   const parFichier = new Map();
   for (const x of r.resultats) { if (!parFichier.has(x.chemin)) parFichier.set(x.chemin, []); parFichier.get(x.chemin).push(x); }
-  document.getElementById("nb-code").innerHTML = `<span class="badge" style="--c:var(--t-gris)">${r.resultats.length}${r.tronque ? "+" : ""} dans ${parFichier.size} fichier${parFichier.size > 1 ? "s" : ""}</span>`;
+  document.getElementById("nb-code").innerHTML = `<span class="badge" style="--c:var(--t-gris)">${r.resultats.length}${r.tronque ? "+" : ""} ${t("dans", "in")} ${parFichier.size} ${pluriel(parFichier.size, "fichier", "fichiers", "file", "files")}</span>`;
   const MAX_LIGNES = 8;
   let html = "";
   for (const [chemin, liste] of parFichier) {
@@ -715,28 +741,28 @@ async function chercherCode(requete) {
       const debutVisible = Math.max(0, avant.length - 60);
       html += `<li class="ligne-code" data-f="${esc(chemin + ":" + x.ligne)}"><span class="num">${x.ligne}</span><span class="txt">${debutVisible ? "…" : ""}${esc(avant.slice(debutVisible).replace(/^\s+/, ""))}<mark>${esc(milieu)}</mark>${esc(apres)}</span>${x.symbole ? `<span class="dans">${esc(x.symbole.nom)}</span>` : ""}</li>`;
     }
-    if (liste.length > MAX_LIGNES) html += `<li class="ligne-code aide" data-f="${esc(chemin + ":" + liste[MAX_LIGNES].ligne)}"><span class="num"></span>… ${liste.length - MAX_LIGNES} autre${liste.length - MAX_LIGNES > 1 ? "s" : ""} ligne${liste.length - MAX_LIGNES > 1 ? "s" : ""} dans ce fichier</li>`;
+    if (liste.length > MAX_LIGNES) html += `<li class="ligne-code aide" data-f="${esc(chemin + ":" + liste[MAX_LIGNES].ligne)}"><span class="num"></span>… ${liste.length - MAX_LIGNES} ${pluriel(liste.length - MAX_LIGNES, "autre ligne", "autres lignes", "more line", "more lines")} ${t("dans ce fichier", "in this file")}</li>`;
   }
-  zone.innerHTML = r.resultats.length ? `<ul class="lignes-code">${html}</ul>` : `<p class="aide">Aucune ligne ne contient ce texte.</p>`;
+  zone.innerHTML = r.resultats.length ? `<ul class="lignes-code">${html}</ul>` : `<p class="aide">${t("Aucune ligne ne contient ce texte.", "No line contains this text.")}</p>`;
 }
 
 function rendreType(t) {
   const liste = D.noeuds.filter(n => n.type === t).sort((a, b) => a.chemin.localeCompare(b.chemin) || (a.ligne || 0) - (b.ligne || 0));
   contenu.innerHTML = `<h2>${esc((TYPES[t] || [t])[0])} ${badge(t)} <span class="badge" style="--c:var(--t-gris)">${liste.length}</span></h2>
-    <div class="groupe carte"><ul style="max-height:none">${liste.map(n => `<li><a href="${lien(n.id)}">${esc(n.type === "route" ? n.nom : libelle(n))}</a><span class="ou">${esc(n.role || emplacement(n))}</span></li>`).join("")}</ul></div>`;
+    <div class="groupe carte"><ul style="max-height:none">${liste.map(n => `<li><a href="${lien(n.id)}">${esc(n.type === "route" ? n.nom : libelle(n))}</a><span class="ou">${esc(roleDe(n) || emplacement(n))}</span></li>`).join("")}</ul></div>`;
 }
 
 function rendreAccueil() {
   choisi = null;
   contenu.innerHTML = `
     <h2>${esc(D.projet)}</h2>
-    <p class="aide">${D.noeuds.length} éléments, ${D.liens.length} liens · carte générée le ${esc(new Date(D.genere_le).toLocaleString("fr-FR"))}. Tapez <kbd>/</kbd> pour chercher un élément ou une ligne de code.</p>
-    <h3>Par type</h3>
+    <p class="aide">${t(`${D.noeuds.length} éléments, ${D.liens.length} liens · carte générée le`, `${D.noeuds.length} elements, ${D.liens.length} links · map generated on`)} ${esc(new Date(D.genere_le).toLocaleString(t("fr-FR", "en-GB")))}. ${t("Tapez <kbd>/</kbd> pour chercher un élément ou une ligne de code.", "Type <kbd>/</kbd> to search for an element or a line of code.")}</p>
+    <h3>${t("Par type", "By type")}</h3>
     <div class="tuiles">${Object.entries(D.types).sort((a, b) => b[1] - a[1]).map(([t, k]) => `<div class="tuile" data-type="${esc(t)}"><b>${k}</b>${badge(t)}</div>`).join("")}</div>
-    <h3>Plan relié du projet</h3>
+    <h3>${t("Plan relié du projet", "Linked outline of the project")}</h3>
     <div id="zone-plan"></div>`;
   rendrePlan(document.getElementById("zone-plan"));
-  document.title = `Carte ${D.projet}`;
+  document.title = `${t("Carte", "Map")} ${D.projet}`;
   if (onglet === "arbre") rendreArbre();
 }
 
@@ -755,13 +781,13 @@ const q = document.getElementById("q");
 let hashPrecedent = location.hash;
 function router() {
   if (edition?.modifie && location.hash !== hashPrecedent) {
-    if (!confirm("Des modifications ne sont pas enregistrées. Quitter l'éditeur quand même ?")) { history.replaceState(null, "", hashPrecedent); return; }
+    if (!confirm(t("Des modifications ne sont pas enregistrées. Quitter l'éditeur quand même ?", "Some changes are not saved. Leave the editor anyway?"))) { history.replaceState(null, "", hashPrecedent); return; }
   }
   edition = null; hashPrecedent = location.hash;
   const h = decodeURIComponent(location.hash.slice(2));
   if (h.startsWith("f/")) { rendreFichier(h.slice(2)); return; }
   if (h.startsWith("n/")) rendreNoeud(h.slice(2));
-  else if (h.startsWith("q/")) { if (q.value !== h.slice(2)) q.value = h.slice(2); rendreRecherche(h.slice(2)); }
+  else if (h.startsWith("q/")) { if (q.value.trim() !== h.slice(2)) q.value = h.slice(2); rendreRecherche(h.slice(2)); }
   else if (h.startsWith("t/")) rendreType(h.slice(2));
   else rendreAccueil();
 }
@@ -794,7 +820,22 @@ document.getElementById("theme").addEventListener("click", () => {
 });
 try { const t = localStorage.getItem("carte-theme"); if (t) document.documentElement.dataset.theme = t; } catch (_) {}
 document.getElementById("nom-projet").textContent = D.projet;
-document.getElementById("meta").textContent = `${D.noeuds.length} éléments · ${D.liens.length} liens`;
+document.getElementById("meta").textContent = t(`${D.noeuds.length} éléments · ${D.liens.length} liens`, `${D.noeuds.length} elements · ${D.liens.length} links`);
+if (EN) {
+  document.getElementById("mot-carte").textContent = "Map";
+  document.getElementById("titre").title = "Overview";
+  q.placeholder = "Search an element, a route, a role… (e.g. “invoice”, “/orders/”, “rate”)";
+  document.getElementById("theme").title = "Light or dark theme";
+  const noms = { arbre: "Tree", routes: "Routes", types: "Types" };
+  document.querySelectorAll(".onglets button").forEach(b => { b.textContent = noms[b.dataset.onglet]; });
+}
+const boutonLangue = document.getElementById("langue");
+boutonLangue.textContent = EN ? "FR" : "EN";
+boutonLangue.title = EN ? "Afficher en français" : "Show in English";
+boutonLangue.addEventListener("click", () => {
+  try { localStorage.setItem("carte-langue", EN ? "fr" : "en"); } catch (_) {}
+  const url = new URL(location.href); url.searchParams.set("lang", EN ? "fr" : "en"); location.href = url.toString();
+});
 window.addEventListener("hashchange", router);
 rendrePanneau();
 router();

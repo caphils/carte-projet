@@ -1,6 +1,6 @@
 ---
 name: carte-projet
-description: Carte reliée d'un projet de code — chaque élément (dossier, fichier, classe, fonction, vue, modèle, route, gabarit, script) avec son emplacement, sa route, son rôle et ses interactions, plus une page HTML interactive avec recherche. À utiliser quand l'utilisateur veut visualiser ou cartographier le projet, comprendre son architecture, ou demande où se trouve quelque chose, à quoi sert un élément, quelle vue sert une URL, qui appelle ou utilise quoi, quel gabarit une page affiche.
+description: Carte reliée d'un projet de code — chaque élément (dossier, fichier, classe, fonction, vue, modèle, route, gabarit, script) avec son emplacement, sa route, son rôle et ses interactions, plus une page HTML interactive avec recherche. À utiliser quand l'utilisateur veut visualiser ou cartographier le projet, comprendre son architecture, ou demande où se trouve quelque chose, à quoi sert un élément, quelle vue sert une URL, qui appelle ou utilise quoi, quel gabarit une page affiche. Also in English: use when the user wants to map or visualize a codebase, understand its architecture, or asks where something is, what an element is for, which view serves a URL, who calls or uses what, which template a page renders.
 ---
 
 # Carte du projet
@@ -12,6 +12,9 @@ L'analyseur `scripts/analyser.py` (dans le dossier de cette skill) parcourt le p
 - `carte.html` : la page autonome à ouvrir dans un navigateur (arborescence, onglet Routes, recherche, graphe des liens) ;
 - `.gitignore` qui exclut ces deux fichiers régénérables ;
 - `roles.json` (s'il existe) : rôles écrits à la main ou par toi, à garder dans le dépôt.
+
+La page s'affiche en français ou en anglais selon la langue du navigateur (bouton FR/EN, ou `?lang=en` dans l'adresse) ;
+les rôles déduits existent dans les deux langues. Réponds à l'utilisateur dans sa langue.
 
 Couvert : Python (définitions, imports, appels, héritage), Django (routes `path`/`include` depuis `ROOT_URLCONF`, vues,
 modèles et relations, formulaires, admin, commandes, tests), gabarits (`extends`, `include`, `{% url %}`, `{% static %}`),

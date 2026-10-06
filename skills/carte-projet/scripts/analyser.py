@@ -494,7 +494,8 @@ class Carte:
                 self.analyser_gabarit(id_, noeud, texte)
             elif type_ in ("script", "style"):
                 if ".min." in noeud["nom"]:
-                    noeud.update(role="Bibliothèque externe (fichier minifié)", source="deduit")
+                    noeud.update(role="Bibliothèque externe (fichier minifié)", role_en="External library (minified file)",
+                                 source="deduit")
                     continue
                 commentaire = re.match(r"\s*(?:/\*+(.*?)\*/|((?:\s*//[^\n]*\n?)+)|((?:\s*#(?!!)[^\n]*\n?)+))", texte,
                                        re.S)
@@ -605,30 +606,43 @@ class Carte:
         return roles
 
     def deduire_role(self, noeud):
+        """Rôle déduit du type et du nom : (français, anglais), ou ("", "")."""
         type_, nom, chemin = noeud["type"], noeud["nom"], noeud["chemin"]
         dossier = Path(chemin).parent.name or self.racine.name
         if type_ == "module":
-            for motif, role in (("views", "Vues de {d} : pages et actions"), ("models", "Modèles de données de {d}"),
-                                ("urls", "Routes (adresses) de {d}"), ("forms", "Formulaires de {d}"),
-                                ("admin", "Administration Django de {d}"), ("apps", "Configuration de l'application {d}"),
-                                ("settings", "Réglages du projet"), ("signals", "Signaux de {d}"),
-                                ("serializers", "Sérialiseurs de {d}"), ("tasks", "Tâches de fond de {d}"),
-                                ("wsgi", "Point d'entrée du serveur web (WSGI)"), ("asgi", "Point d'entrée du serveur (ASGI)"),
-                                ("manage", "Commandes Django (manage.py)"), ("__init__", "Paquet {d}"),
-                                ("test", "Tests de {d}")):
+            for motif, fr, en in (
+                    ("views", "Vues de {d} : pages et actions", "Views of {d}: pages and actions"),
+                    ("models", "Modèles de données de {d}", "Data models of {d}"),
+                    ("urls", "Routes (adresses) de {d}", "Routes (URLs) of {d}"),
+                    ("forms", "Formulaires de {d}", "Forms of {d}"),
+                    ("admin", "Administration Django de {d}", "Django admin of {d}"),
+                    ("apps", "Configuration de l'application {d}", "App configuration of {d}"),
+                    ("settings", "Réglages du projet", "Project settings"),
+                    ("signals", "Signaux de {d}", "Signals of {d}"),
+                    ("serializers", "Sérialiseurs de {d}", "Serializers of {d}"),
+                    ("tasks", "Tâches de fond de {d}", "Background tasks of {d}"),
+                    ("wsgi", "Point d'entrée du serveur web (WSGI)", "Web server entry point (WSGI)"),
+                    ("asgi", "Point d'entrée du serveur (ASGI)", "Server entry point (ASGI)"),
+                    ("manage", "Commandes Django (manage.py)", "Django commands (manage.py)"),
+                    ("__init__", "Paquet {d}", "Package {d}"),
+                    ("test", "Tests de {d}", "Tests of {d}")):
                 if Path(nom).stem.startswith(motif):
-                    return role.format(d=dossier)
+                    return fr.format(d=dossier), en.format(d=dossier)
             if "/management/commands/" in "/" + chemin:
-                return f"Commande manage.py {Path(nom).stem}"
-            return ""
+                return f"Commande manage.py {Path(nom).stem}", f"manage.py command {Path(nom).stem}"
+            return "", ""
+        routes = ", ".join(noeud.get("routes", [])[:3])
         return {
-            "migration": "Migration de la base de données",
-            "route": "Adresse servie par {v}".format(v=noeud.get("vue_texte", "une vue")),
-            "modele": "Modèle de données (table)", "formulaire": "Formulaire", "admin": "Écran d'administration",
-            "test": "Test automatique", "commande": "Commande manage.py", "config": "Configuration",
-            "vue": "Vue : page ou action servie par " + ", ".join(noeud.get("routes", [])[:3]) if noeud.get("routes") else "",
-            "ressource": "Fichier de ressource", "dossier": "",
-        }.get(type_, "")
+            "migration": ("Migration de la base de données", "Database migration"),
+            "route": ("Adresse servie par {v}".format(v=noeud.get("vue_texte", "une vue")),
+                      "URL served by {v}".format(v=noeud.get("vue_texte", "a view"))),
+            "modele": ("Modèle de données (table)", "Data model (table)"), "formulaire": ("Formulaire", "Form"),
+            "admin": ("Écran d'administration", "Admin screen"), "test": ("Test automatique", "Automated test"),
+            "commande": ("Commande manage.py", "manage.py command"), "config": ("Configuration", "Configuration"),
+            "vue": ("Vue : page ou action servie par " + routes, "View: page or action served by " + routes)
+            if routes else ("", ""),
+            "ressource": ("Fichier de ressource", "Resource file"),
+        }.get(type_, ("", ""))
 
     def appliquer_roles(self):
         chemin_roles = self.racine / DOSSIER_SORTIE / "roles.json"
@@ -645,15 +659,19 @@ class Carte:
             elif id_ in claude_md:
                 noeud.update(role=claude_md[id_], source="claude_md")
             else:
-                role = self.deduire_role(noeud)
+                role, role_en = self.deduire_role(noeud)
                 if role:
-                    noeud.update(role=role, source="deduit")
+                    noeud.update(role=role, role_en=role_en, source="deduit")
             if noeud["type"] == "route" and not noeud.get("role"):
-                noeud.update(role=f"Adresse servie par {noeud.get('vue_texte', '')}", source="deduit")
-        # une route reprend le rôle de sa vue
+                noeud.update(role=f"Adresse servie par {noeud.get('vue_texte', '')}",
+                             role_en=f"URL served by {noeud.get('vue_texte', '')}", source="deduit")
+        # une route reprend le rôle de sa vue (rôle écrit : le même dans les deux langues)
         for source, cible, type_ in self.liens:
             if type_ == "sert" and self.noeuds[cible].get("role") and self.noeuds[source].get("source") == "deduit":
+                self.noeuds[source].pop("role_en", None)
                 self.noeuds[source].update(role=self.noeuds[cible]["role"], source="vue")
+                if self.noeuds[cible].get("role_en"):
+                    self.noeuds[source]["role_en"] = self.noeuds[cible]["role_en"]
 
     # ------------------------------------------------------------------ ensemble
     def analyser(self):

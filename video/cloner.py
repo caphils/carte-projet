@@ -29,7 +29,7 @@ def main(reference, commandes):
     modele.prepare_conditionals(reference)
     for rang, commande in enumerate(a_faire, 1):
         debut = time.time()
-        son = modele.generate(commande["texte"], language_id="fr")
+        son = modele.generate(commande["texte"], language_id=commande.get("langue", "fr"))
         torchaudio.save(commande["chemin"], son, modele.sr)
         print(f"  voix clonée {rang}/{len(a_faire)} ({time.time() - debut:.0f} s) : {commande['texte'][:60]}",
               flush=True)

@@ -19,6 +19,11 @@ python video/scenario.py
 python video/montage.py carte_projet "La carte reliée de votre code"
 python video/sonoriser.py                                         # voix clonée (échantillon ECHANTILLON)
 VOIX=fr-FR-VivienneMultilingualNeural python video/sonoriser.py   # ou voix Microsoft
+
+# Version anglaise (page de la carte en anglais, cartons, légendes et voix en anglais) : carte_projet_en
+LANGUE=en python video/scenario.py
+python video/montage.py carte_projet_en "The linked map of your code"
+LANGUE=en python video/sonoriser.py
 ```
 
 La voix clonée (Chatterbox multilingue, calculée sur la machine) demande un environnement à part (`PYTHON_CLONE`,
@@ -27,7 +32,7 @@ repris du studio vidéo de LabManager (`LABMANAGER`).
 
 ## Modifier
 
-- Texte d'une légende ou d'un carton : `scenario.py`, et la réplique correspondante dans `sonoriser.py` (`REPLIQUES`,
-  une par carton et par légende, dans le même ordre).
+- Texte d'une légende ou d'un carton : `scenario.py` (`TEXTES`, par langue), et la réplique correspondante dans
+  `sonoriser.py` (`REPLIQUES_FR`, `REPLIQUES_EN` : une par carton et par légende, dans le même ordre).
 - Couleurs, logo, mise en page : `montage.py`. Prononciation : `PRONONCIATION` dans `sonoriser.py`.
 - En cas d'échec du tournage, une copie d'écran est écrite dans `build/carte_projet/erreur.png`.

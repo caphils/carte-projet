@@ -29,11 +29,13 @@ LABMANAGER = Path(os.environ.get("LABMANAGER", Path.home() / "Documents" / "App_
 PYTHON_CLONE = Path(os.environ.get("PYTHON_CLONE", LABMANAGER / ".venv-clone" / "bin" / "python"))
 ECHANTILLONS = [Path(os.environ["ECHANTILLON"])] if "ECHANTILLON" in os.environ else sorted(
     (LABMANAGER / "videos" / "voix").glob("ma voix.*"))
-NOM, TITRE = "carte_projet", "carte-projet : la carte reliée de votre code"
+LANGUE = os.environ.get("LANGUE", "fr")
+NOM = "carte_projet" + ("_en" if LANGUE == "en" else "")
+TITRE = "carte-projet: the linked map of your code" if LANGUE == "en" else "carte-projet : la carte reliée de votre code"
 AVANCE = 0.2  # la voix démarre un peu après l'apparition de la légende
 
 # Une réplique par carton et par légende, dans l'ordre du tournage (scenario.py)
-REPLIQUES = [
+REPLIQUES_FR = [
     "carte-projet : la carte reliée de votre code, une skill pour Claude Code.",
     "Vous découvrez un projet. Où est géré ce modèle ? Quelle vue sert cette adresse ? Qui appelle cette fonction ?",
     "Il suffit de demander à Claude : fais la carte du projet.",
@@ -51,6 +53,25 @@ REPLIQUES = [
     "Aucune dépendance, Django bien compris, tout reste sur votre machine. Et Claude s'en sert pour vous répondre.",
     "Installez-la dans Claude Code en deux commandes. Le lien est sur GitHub : caphils, carte-projet.",
 ]
+REPLIQUES_EN = [
+    "carte-projet: the linked map of your code, a skill for Claude Code.",
+    "You're new to a project. Where is this model handled? Which view serves this URL? Who calls this function?",
+    "Just ask Claude: map this project.",
+    "Example: the official Django website. Over two thousand five hundred elements, analyzed in under a second.",
+    "The linked outline shows the whole project, with the links between its parts.",
+    "Click the blog: you instantly see what it uses, and what uses it.",
+    "Search finds models, views, templates, routes, and lines of code.",
+    "Every element has its card: its exact location, its role, and its code.",
+    "And all its interactions: the route it serves, what it calls, who uses it.",
+    "The Routes tab lists every URL of the site, and the view that serves it.",
+    "Click a URL to reach its view, its templates, its code.",
+    "With the local server, search also scans every line of code.",
+    "One click opens the file at the right line, in the right function.",
+    "You can even fix it in place: Command S saves, and the map updates.",
+    "No dependencies, real Django understanding, and everything stays on your machine. Claude uses it to answer you.",
+    "Install it in Claude Code with two commands. Find it on GitHub: caphils, carte-projet.",
+]
+REPLIQUES = REPLIQUES_EN if LANGUE == "en" else REPLIQUES_FR
 
 
 def horodatage(secondes, srt=False):
@@ -68,7 +89,7 @@ def videos():
     if len(reperes) != len(REPLIQUES):
         raise SystemExit(f"{len(reperes)} légendes et cartons au tournage, {len(REPLIQUES)} répliques : les accorder.")
     return [(NOM, TITRE, donnees["duree"], [(e["t"] + AVANCE, texte) for e, texte in zip(reperes, REPLIQUES)])]
-VOIX = os.environ.get("VOIX", "clone" if ECHANTILLONS else "fr-FR-VivienneMultilingualNeural")
+VOIX = os.environ.get("VOIX", "clone" if ECHANTILLONS else ("en-US-AvaMultilingualNeural" if LANGUE == "en" else "fr-FR-VivienneMultilingualNeural"))
 REFERENCE = (9.8, 9.6)  # passage de l'échantillon imité : début et durée en secondes (une phrase entière, nette)
 TEMPO = 1.08 if VOIX == "clone" else 1.0  # la voix clonée, un peu posée, est légèrement accélérée
 FREQUENCE = 24000
@@ -83,6 +104,9 @@ PRONONCIATION = {
     "carte-projet": "carte projet",
     "Django": "Djan-go",
     "caphils": "cap-hils",
+} if LANGUE == "fr" else {
+    "carte-projet": "cart project",
+    "caphils": "cap-hills",
 }
 
 
@@ -131,11 +155,11 @@ async def synthetiser(textes):
     ref, empreinte = reference() if VOIX == "clone" else (None, "")
     fichiers = {}
     for texte in textes:
-        cle = hashlib.sha1(f"{VOIX}|{empreinte}|{a_dire(texte)}".encode()).hexdigest()[:16]
+        cle = hashlib.sha1(f"{VOIX}|{empreinte}|{LANGUE}|{a_dire(texte)}".encode()).hexdigest()[:16]
         fichiers[texte] = CACHE / f"{cle}.{'wav' if VOIX == 'clone' else 'mp3'}"
     if VOIX == "clone":
         commandes = CACHE / "commandes.json"
-        commandes.write_text(json.dumps([{"texte": a_dire(t), "chemin": str(f)} for t, f in fichiers.items()],
+        commandes.write_text(json.dumps([{"texte": a_dire(t), "chemin": str(f), "langue": LANGUE} for t, f in fichiers.items()],
                                         ensure_ascii=False), encoding="utf-8")
         subprocess.run([PYTHON_CLONE, DOSSIER / "cloner.py", ref, commandes], check=True)
     else:

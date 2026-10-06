@@ -296,7 +296,8 @@ def dessiner_carton(image, carton, opacite, titre_video):
         for rang, ligne in enumerate(couper(point, police(35, 450), 1500)):
             dessin.text((190, y), ligne, font=police(35, 450), fill=BLANC)
             y += 47
-    dessin.text((140, H - 110), f"Skill pour Claude Code · {DEPOT}", font=police(28, 500),
+    pied = "Claude Code skill" if ANGLAIS else "Skill pour Claude Code"
+    dessin.text((140, H - 110), f"{pied} · {DEPOT}", font=police(28, 500),
                 fill=(*ACCENT_CLAIR, 255))
     if titre_video and titre_video != carton["titre"]:
         dessin.text((L - 140, H - 110), titre_video, font=police(28, 500), fill=(*ACCENT_CLAIR, 255), anchor="ra")
@@ -355,7 +356,12 @@ def composer(tournage, t, titre_video):
     return image.convert("RGB")
 
 
+ANGLAIS = False  # vidéo anglaise (nom en _en) : textes du montage en anglais
+
+
 def monter(nom, titre_video="", debut=0.0):
+    global ANGLAIS
+    ANGLAIS = nom.endswith("_en")
     tournage = Tournage(nom)
     SORTIE.mkdir(parents=True, exist_ok=True)
     chemin = SORTIE / f"{nom}.mp4"

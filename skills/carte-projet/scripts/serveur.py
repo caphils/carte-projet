@@ -74,7 +74,7 @@ class Etat:
         try:
             motif = re.compile(requete if regex else re.escape(requete), 0 if casse else re.I)
         except re.error as erreur:
-            return {"erreur": f"Expression régulière invalide : {erreur}"}
+            return refus(f"Expression régulière invalide : {erreur}", f"Invalid regular expression: {erreur}")
         resultats = []
         for chemin in sorted(self.fichiers):
             if ".min." in chemin:
@@ -102,11 +102,11 @@ class Etat:
             return None
         octets = absolu.read_bytes()
         if len(octets) > MAX_OCTETS:
-            return {"erreur": "Fichier trop volumineux pour l'éditeur."}
+            return refus("Fichier trop volumineux pour l'éditeur.", "File too large for the editor.")
         try:
             texte = octets.decode("utf-8")
         except UnicodeDecodeError:
-            return {"erreur": "Fichier non UTF-8 : modifiez-le dans votre éditeur."}
+            return refus("Fichier non UTF-8 : modifiez-le dans votre éditeur.", "Not a UTF-8 file: edit it in your editor.")
         return {"chemin": chemin, "contenu": texte.replace("\r\n", "\n"), "empreinte": empreinte(octets),
                 "crlf": "\r\n" in texte}
 
@@ -114,22 +114,29 @@ class Etat:
         with self.verrou:
             absolu = self.chemin_sur(chemin)
             if not absolu:
-                return 404, {"erreur": "Fichier inconnu ou hors du projet."}
+                return 404, refus("Fichier inconnu ou hors du projet.", "Unknown file, or outside the project.")
             actuel = absolu.read_bytes()
             if empreinte(actuel) != empreinte_lue:
-                return 409, {"erreur": "Le fichier a changé sur le disque depuis son ouverture. Rechargez-le avant de "
-                                       "modifier (vos changements sont encore dans l'éditeur : copiez-les)."}
+                return 409, refus("Le fichier a changé sur le disque depuis son ouverture. Rechargez-le avant de modifier (vos "
+                             "changements sont encore dans l'éditeur : copiez-les).",
+                             "The file changed on disk since it was opened. Reload it before editing (your changes "
+                             "are still in the editor: copy them).")
             if b"\r\n" in actuel:
                 contenu = contenu.replace("\r\n", "\n").replace("\n", "\r\n")
             octets = contenu.encode("utf-8")
             absolu.write_bytes(octets)
             try:
                 self.recalculer()
-                recalcul = None
+                recalcul = recalcul_en = None
             except Exception as erreur:  # la carte reste l'ancienne ; l'enregistrement, lui, est fait
-                recalcul = f"Carte non recalculée : {erreur}"
-            return 200, {"empreinte": empreinte(octets), "recalcul": recalcul,
+                recalcul, recalcul_en = f"Carte non recalculée : {erreur}", f"Map not recomputed: {erreur}"
+            return 200, {"empreinte": empreinte(octets), "recalcul": recalcul, "recalcul_en": recalcul_en,
                          "genere_le": self.donnees["genere_le"]}
+
+
+def refus(fr, en):
+    """Message d'erreur dans les deux langues de la page (erreur : français, error : anglais)."""
+    return {"erreur": fr, "error": en}
 
 
 def gestionnaire(etat):
@@ -157,29 +164,29 @@ def gestionnaire(etat):
             if url.path in ("/", "/index.html"):
                 return self.repondre(200, etat.html().encode("utf-8"), "text/html; charset=utf-8")
             if not url.path.startswith("/api/"):
-                return self.repondre(404, {"erreur": "Introuvable"})
+                return self.repondre(404, refus("Introuvable", "Not found"))
             if not self.autorise():
-                return self.repondre(403, {"erreur": "Accès refusé"})
+                return self.repondre(403, refus("Accès refusé", "Access denied"))
             params = {cle: valeurs[0] for cle, valeurs in parse_qs(url.query).items()}
             if url.path == "/api/fichier":
                 resultat = etat.lire(params.get("chemin", ""))
-                return self.repondre(404 if resultat is None else 200, resultat or {"erreur": "Fichier inconnu."})
+                return self.repondre(404 if resultat is None else 200, resultat or refus("Fichier inconnu.", "Unknown file."))
             if url.path == "/api/code":
                 return self.repondre(200, etat.chercher_code(params.get("q", ""), params.get("regex") == "1",
                                                              params.get("casse") == "1"))
-            return self.repondre(404, {"erreur": "Introuvable"})
+            return self.repondre(404, refus("Introuvable", "Not found"))
 
         def do_POST(self):
             if urlparse(self.path).path != "/api/fichier":
-                return self.repondre(404, {"erreur": "Introuvable"})
+                return self.repondre(404, refus("Introuvable", "Not found"))
             if not self.autorise():
-                return self.repondre(403, {"erreur": "Accès refusé"})
+                return self.repondre(403, refus("Accès refusé", "Access denied"))
             try:
                 longueur = int(self.headers.get("Content-Length", "0"))
                 corps = json.loads(self.rfile.read(min(longueur, MAX_OCTETS * 2)).decode("utf-8"))
                 statut, resultat = etat.enregistrer(corps["chemin"], corps["contenu"], corps["empreinte"])
             except (ValueError, KeyError, TypeError):
-                statut, resultat = 400, {"erreur": "Requête invalide."}
+                statut, resultat = 400, refus("Requête invalide.", "Invalid request.")
             return self.repondre(statut, resultat)
 
     return Gestionnaire
