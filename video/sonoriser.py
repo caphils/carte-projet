@@ -68,8 +68,8 @@ REPLIQUES_EN = [
     "With the local server, search also scans every line of code.",
     "One click opens the file at the right line, in the right function.",
     "You can even fix it in place: Command S saves, and the map updates.",
-    "No dependencies, real Django understanding, and everything stays on your machine. Claude uses it to answer you.",
-    "Install it in Claude Code with two commands. Find it on GitHub: caphils, carte-projet.",
+    "No dependencies, real Django support, and everything stays on your machine.",
+    "Install it in Claude Code with two commands.",
 ]
 REPLIQUES = REPLIQUES_EN if LANGUE == "en" else REPLIQUES_FR
 
